@@ -22,6 +22,6 @@ public class PythonTestActivity extends AppCompatActivity {
         main_program = py.getModule("prolog");
 
         PyObject str = main_program.callAttr("prolog_treatment","hallo python");
-        Log.e("python: ", str.toString());
+        Log.e("22222223: ", str.toString());
     }
 }

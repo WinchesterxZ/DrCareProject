@@ -31,6 +31,7 @@ import com.google.firebase.ml.modeldownloader.FirebaseModelDownloader;
 
 import org.tensorflow.lite.Interpreter;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
 import java.nio.ByteBuffer;
@@ -102,10 +103,22 @@ public class HomeFragment extends Fragment {
         return view;
     }
 
+    public byte[] fromBitmap (Bitmap bitmap){
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        try {
+            bitmap.compress(Bitmap.CompressFormat.PNG,100, outputStream);
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+        Log.e("image: ",outputStream.toByteArray()+"" );
+        return outputStream.toByteArray();
+    }
+
     private void imageModel(String name_model, int width, int height, String[] stringArrayList) {
         mProgress.setMessage("Uploading..");
         mProgress.show();
         bitmap = Bitmap.createScaledBitmap(bitmap, width, height, true);
+        /*
         ByteBuffer input = ByteBuffer.allocateDirect(width * height * 1 * 4).order(ByteOrder.nativeOrder());
         for (int y = 0; y < width; y++) {
             for (int x = 0; x < height; x++) {
@@ -159,6 +172,8 @@ public class HomeFragment extends Fragment {
                         }
                     }
                 });
+
+         */
     }
 
 
@@ -168,7 +183,7 @@ public class HomeFragment extends Fragment {
             try {
                 bitmap = MediaStore.Images.Media.getBitmap(getActivity().getContentResolver(), data.getData());
                 img_corona.setImageBitmap(bitmap);
-
+                byte[] a = fromBitmap(bitmap);
             } catch (IOException e) {
                 Log.e("gallary exception: ", e.getMessage());
             }

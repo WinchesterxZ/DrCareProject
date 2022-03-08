@@ -17,6 +17,7 @@ import android.view.ViewGroup;
 
 import com.bumptech.glide.Glide;
 import com.example.drhello.AddPersonActivity;
+import com.example.drhello.LastChat;
 import com.example.drhello.firebaseinterface.MyCallBackChats;
 import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
 import com.example.drhello.firebaseinterface.MyCallbackUser;
@@ -57,7 +58,7 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
     private ArrayList<UserState> userStates = new ArrayList<>();
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-    private ArrayList<LastMessages> userAccountArrayList = new ArrayList<>();
+    private ArrayList<LastChat> userAccountArrayList = new ArrayList<>();
     private UserAccount userAccount1;
     private FloatingActionButton add_user;
     Map<String, AddPersonModel> mapFriend = new HashMap<>();
@@ -105,32 +106,24 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
             @Override
             public void onCallBack(DocumentSnapshot value) {
                 userAccount1 = value.toObject(UserAccount.class);
-                mapFriend = userAccount1.getFriendsmap();
-
                 Log.e("userAccount1 : ", userAccount1.getName());
                 for (Map.Entry<String, AddPersonModel> entry : userAccount1.getFriendsmap().entrySet()) {
-                    LastMessages lastMessages = new LastMessages();
-                    lastMessages.setId(entry.getValue().getId());
-                    lastMessages.setImage_person(entry.getValue().getImage_person());
-                    lastMessages.setName_person(entry.getValue().getName_person());
+                    LastChat lastChat = new LastChat();
+                    lastChat.setImage_person(entry.getValue().getImage_person());
+                    lastChat.setNameSender(entry.getValue().getName_person());
+                    lastChat.setIdFriend(entry.getValue().getId());
                     if(userAccount1.getMap().containsKey(entry.getKey())){
-                        lastMessages.setMessage(userAccount1.getMap().get(entry.getKey()).getMessage());
-                        lastMessages.setDate(userAccount1.getMap().get(entry.getKey()).getDate());
-                        lastMessages.setNameSender(userAccount1.getMap().get(entry.getKey()).getNameSender());
-                        lastMessages.setSenderid(userAccount1.getMap().get(entry.getKey()).getSenderid());
-                        lastMessages.setRecord(userAccount1.getMap().get(entry.getKey()).getRecord());
-                        lastMessages.setImage(userAccount1.getMap().get(entry.getKey()).getImage());
-                        lastMessages.setRecieveid(userAccount1.getMap().get(entry.getKey()).getRecieveid());
+                        lastChat.setMessage(userAccount1.getMap().get(entry.getKey()).getMessage());
+                        lastChat.setDate(userAccount1.getMap().get(entry.getKey()).getDate());
+                        Log.e("getMessage : ", userAccount1.getMap().get(entry.getKey()).getMessage());
+
                     }else{
-                        lastMessages.setMessage("");
-                        lastMessages.setDate("");
-                        lastMessages.setNameSender("");
-                        lastMessages.setSenderid("");
-                        lastMessages.setRecord("");
-                        lastMessages.setImage("");
-                        lastMessages.setRecieveid("");
+                        lastChat.setMessage("");
+                        lastChat.setDate("");
+                        Log.e("getMessage : ","getMessage()");
+
                     }
-                    userAccountArrayList.add(lastMessages);
+                    userAccountArrayList.add(lastChat);
                 }
 
                 FriendsAdapter adapter = new FriendsAdapter(getActivity(),
@@ -214,9 +207,9 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
     }
 
     @Override
-    public void onClick(LastMessages friendAccount) {
+    public void onClick(LastChat lastChat) {
             Intent intent = new Intent(getActivity(), ChatActivity.class);
-            intent.putExtra("friendAccount", friendAccount);
+            intent.putExtra("friendAccount", lastChat.getIdFriend());
             intent.putExtra("userAccount", userAccount1);
             ChatModel chatModel = (ChatModel) getActivity().getIntent().getSerializableExtra("message");
             if (chatModel != null) {

@@ -8,7 +8,9 @@ public class LastMessages implements Serializable {
     public LastMessages() {
     }
 
-    public LastMessages(String id, String image_person, String name_person, String date, String image, String message, String nameSender, String recieveid, String record, String senderid) {
+    public LastMessages(String id, String image_person, String name_person,
+                        String date, String image, String message, String nameSender,
+                        String recieveid, String record, String senderid) {
         this.id = id;
         this.image_person = image_person;
         this.name_person = name_person;

@@ -403,7 +403,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
                 startLocationUpdates();
             }
         }
-
     }
 
     public void onStop() {

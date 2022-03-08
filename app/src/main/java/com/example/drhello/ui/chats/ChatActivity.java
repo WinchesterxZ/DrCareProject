@@ -9,11 +9,13 @@ import androidx.databinding.DataBindingUtil;
 import androidx.loader.content.CursorLoader;
 
 import android.Manifest;
+import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
 import android.graphics.Bitmap;
@@ -22,6 +24,7 @@ import android.graphics.Color;
 import android.graphics.drawable.BitmapDrawable;
 import android.graphics.drawable.ColorDrawable;
 import android.graphics.drawable.Drawable;
+import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
 import android.net.Uri;
@@ -50,9 +53,11 @@ import com.devlomi.record_view.OnBasketAnimationEnd;
 import com.devlomi.record_view.OnRecordClickListener;
 import com.devlomi.record_view.OnRecordListener;
 import com.devlomi.record_view.RecordPermissionHandler;
+import com.example.drhello.LastChat;
 import com.example.drhello.StateOfUser;
 import com.example.drhello.adapter.FriendsAdapter;
 import com.example.drhello.firebaseinterface.MyCallBackChats;
+import com.example.drhello.firebaseinterface.MyCallBackFriend;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
 import com.example.drhello.fragment.ChatFragment;
 import com.example.drhello.model.AddPersonModel;
@@ -65,6 +70,17 @@ import com.example.drhello.model.ChatChannel;
 import com.example.drhello.model.ChatModel;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.ui.main.MainActivity;
+import com.example.drhello.ui.mapping.MapsActivity;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.common.api.Status;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.location.LocationSettingsRequest;
+import com.google.android.gms.location.LocationSettingsResult;
+import com.google.android.gms.location.LocationSettingsStatusCodes;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
@@ -90,6 +106,7 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
@@ -97,7 +114,8 @@ import java.util.UUID;
 
 import static androidx.core.content.PermissionChecker.PERMISSION_GRANTED;
 
-public class ChatActivity extends AppCompatActivity  {
+public class ChatActivity extends AppCompatActivity  implements com.google.android.gms.location.LocationListener,
+        GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
     private static final int Gallary_REQUEST_CODE = 1, SONGS_REQUEST_CODE = 2, PERMISSION_ALL = 4000, PERMISSION_ALL_STORAGE = 5000;
     private static final int CAMERA_REQUEST_CODE = 1888;
     private static final int MY_CAMERA_PERMISSION_CODE = 100;
@@ -106,14 +124,17 @@ public class ChatActivity extends AppCompatActivity  {
     private final int REQUESTPERMISSIONSLOCATION = 10;
     final int MY_Record_PERMISSION_CODE = 0;
     private FirebaseAuth mAuth;
+    private Location mLocation;
     private FirebaseFirestore db;
     //public static ProgressDialog mProgress;
     private ActivityChatBinding activityChatBinding;
     private boolean flag_check_message = false, flagFirstTime = true;
     private String geoUri = "", iDChannel = "", mFileName;
     private ArrayList<ChatModel> chatsArrayList = new ArrayList<>();
-    private LastMessages lastmassage;
+    private String idFriend;
     private UserAccount userAccountme, friendAccount;
+    private GoogleApiClient mGoogleApiClient;
+    private LocationRequest mLocationRequest;
 
     // private  MediaRecorder mRecorder;
     private static final String AUDIO_RECORDER_FILE_EXT_3GP = ".3gp";
@@ -130,6 +151,7 @@ public class ChatActivity extends AppCompatActivity  {
     private Recycle_Message_Adapter recycle_message_adapter;
     private Bitmap bitmap;
     private RequestPermissions requestPermissions;
+    private double Lat = 0.0 ,Lon = 0.0;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -142,7 +164,7 @@ public class ChatActivity extends AppCompatActivity  {
         }
 
         requestPermissions = new RequestPermissions(ChatActivity.this, ChatActivity.this);
-
+        checkRunTimePermission();
         init();
         playRecordVoice();
         activityChatBinding.editMessage.addTextChangedListener(new TextWatcher() {
@@ -220,8 +242,6 @@ public class ChatActivity extends AppCompatActivity  {
                     activityChatBinding.editMessage.setText("");
                     storeMessageOnFirebase(chatModel);
                     sendNotification(chatModel.getMessage());
-
-
                 } else {
                     Toast.makeText(ChatActivity.this, "Empty", Toast.LENGTH_SHORT).show();
                 }
@@ -230,41 +250,19 @@ public class ChatActivity extends AppCompatActivity  {
         });
 
 
-        readDataChatsListener(new MyCallBackChats() {
-            @Override
-            public void onCallBack(DocumentSnapshot value) {
-                UserAccount userAccountme = value.toObject(UserAccount.class);
-                Map<String,ChatModel> map = userAccountme.getMap();
-                Log.e("entChatModel: ",map.entrySet()+"");
 
-                for (Map.Entry<String, ChatModel> entry : map.entrySet()) {
-                    Log.e("entry: ",entry.getValue().getMessage());
-                    if(entry.getKey().equals(lastmassage.getSenderid()) ){
-                        Log.e("entry: ",entry.getValue().getMessage());
-                        recycle_message_adapter.addMessage(entry.getValue());
-                        Log.e("chatsArray: ",chatsArrayList.get(0).getMessage());
-                   ///     chatsArrayList.add(0,entry.getValue());
-                        recycle_message_adapter.notifyItemInserted(0);
-                        break;
-                    }
-                }
-            }
-        });
     }
 
     private void init() {
         activityChatBinding = DataBindingUtil.setContentView(this, R.layout.activity_chat);
+        getBitmapFromImage();
         mRequestQueue = Volley.newRequestQueue(this);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         recycle_message_adapter = new Recycle_Message_Adapter(chatsArrayList, ChatActivity.this, bitmap);
         activityChatBinding.rvChatFriend.setAdapter(recycle_message_adapter);
-        //  mProgress = new ProgressDialog(this);
 
-        //   mRecorder = new MediaRecorder();
-//        recordAudio = new RecordAudio();
-
-        lastmassage = (LastMessages) getIntent().getSerializableExtra("friendAccount");
+        idFriend = (String) getIntent().getSerializableExtra("friendAccount");
 
         String friendIdIntent = getIntent().getStringExtra("chatchannel");
         String id_massage;
@@ -285,23 +283,50 @@ public class ChatActivity extends AppCompatActivity  {
             });
 
         } else {
-            id_massage = lastmassage.getId();
+            id_massage = idFriend;
             userAccountme = (UserAccount) getIntent().getSerializableExtra("userAccount");
         }
-        db.collection("users").whereEqualTo("id", id_massage)
-                .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+
+        readDataFriendAccount(new MyCallBackFriend() {
             @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+            public void onCallBack(Task<QuerySnapshot> task) {
                 if (task.isSuccessful()) {
                     Log.e("task : ", " tast");
                     for (QueryDocumentSnapshot document : task.getResult()) {
                         friendAccount = document.toObject(UserAccount.class);
                         createChannelOnFirebase(friendAccount.getId());
                         retriveDate();
+
+                        readDataChatsListener(new MyCallBackChats() {
+                            @Override
+                            public void onCallBack(DocumentSnapshot value) {
+                                LastMessages lastMessages = value.toObject(LastMessages.class);
+                                if(lastMessages != null){
+                                    ChatModel chatModel = new ChatModel(lastMessages.getMessage(),lastMessages.getDate(),
+                                            lastMessages.getSenderid(),lastMessages.getRecieveid()
+                                            ,lastMessages.getImage(),lastMessages.getNameSender(),lastMessages.getRecord());
+
+                                    recycle_message_adapter.addMessage(chatModel);
+                                    Log.e("chatsArray: ",chatsArrayList.get(0).getMessage());
+                                    ///     chatsArrayList.add(0,entry.getValue());
+                                    recycle_message_adapter.notifyItemInserted(0);
+                                    if(chatModel.getSenderid().equals(mAuth.getCurrentUser().getUid())){
+                                        int totalItemCount = activityChatBinding.rvChatFriend.getAdapter().getItemCount();
+                                        if (totalItemCount > 0)
+                                            activityChatBinding.rvChatFriend.getLayoutManager().smoothScrollToPosition(activityChatBinding.rvChatFriend,
+                                                    null, 0);
+                                    }
+                                }
+
+                            }
+                        });
+
                     }
                 }
             }
-        });
+        },id_massage);
+
+
 
     }
 
@@ -402,18 +427,7 @@ public class ChatActivity extends AppCompatActivity  {
                     return true;
                 }
 
-//                int com=ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE);
-//                int ad=ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.RECORD_AUDIO);
-//                boolean recordPermissionAvailable =
-//                        ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.RECORD_AUDIO) == PERMISSION_GRANTED;
-//                if (recordPermissionAvailable) {
-//                    return true;
-//                }
-//
-//
-//                ActivityCompat.requestPermissions(ChatActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, 0);
-//
-//                return false;
+
                 if (ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
                     ActivityCompat.requestPermissions(ChatActivity.this,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_ALL_STORAGE);
 
@@ -524,7 +538,6 @@ public class ChatActivity extends AppCompatActivity  {
             @Override
             public void onClick(View view) {
                 //////////////////to get location
-
                 if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
                     if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
                             == PackageManager.PERMISSION_GRANTED ||
@@ -533,25 +546,32 @@ public class ChatActivity extends AppCompatActivity  {
                             ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
                                     == PackageManager.PERMISSION_GRANTED) {
                         if (isGPSEnabled(ChatActivity.this)) {
-                            GPSTracker currentLocation = new GPSTracker(getApplicationContext());
-                            geoUri = "http://www.google.com/maps/place/" + currentLocation.getLatitude() + "," + currentLocation.getLongitude() + "";
-                        } else {
-                            statusCheck();
+                            geoUri = "http://www.google.com/maps/place/" + Lat + "," + Lon + "";
+                            activityChatBinding.editMessage.setText(geoUri);
+                            Log.e("google",geoUri);
+                        }else{
+                            requestGps();
                         }
-                        Log.e("checkRunTime : ", "true");
-
-
                     } else {
                         requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION},
                                 REQUESTPERMISSIONSLOCATION);
                     }
-                }
-                if (!geoUri.equals("")) {
-                    activityChatBinding.editMessage.setText(geoUri);
-                } else {
-                    Toast.makeText(getApplicationContext(), "please , Check premmision of location !!", Toast.LENGTH_SHORT).show();
+                }else{
+                    if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED ||
+                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED) {
+                        if (isGPSEnabled(ChatActivity.this)) {
+                            geoUri = "http://www.google.com/maps/place/" + Lat + "," + Lon + "";
+                            activityChatBinding.editMessage.setText(geoUri);
+                            Log.e("google",geoUri);
+                        }else{
+                            requestGps();
+                        }
+                    }
                 }
                 alertDialog.dismiss();
+
             }
         });
 
@@ -574,13 +594,6 @@ public class ChatActivity extends AppCompatActivity  {
 
         super.onRequestPermissionsResult(requestCode, permissions, grantResults);
         switch (requestCode) {
-            case Location_REQUEST_CODE:
-                if (grantResults.length > 0
-                        && grantResults[0] == PackageManager.PERMISSION_GRANTED
-                        && grantResults[1] == PackageManager.PERMISSION_GRANTED) {
-                }
-                return;
-
             case CAMERA_REQUEST_CODE:
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
                     Toast.makeText(this, "camera permission granted", Toast.LENGTH_LONG).show();
@@ -605,13 +618,18 @@ public class ChatActivity extends AppCompatActivity  {
                     }
                 }
                 break;
-            case REQUESTPERMISSIONSLOCATION:
+            case REQUESTPERMISSIONSLOCATION :
                 if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
-                    if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED ||
-                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+                    if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED ||
+                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED ||
+                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED) {
                         Log.e("checkRunTime : ", "true");
                         // make a buidler for GoogleApiClient //
+                        createLocationRequest();
+
                         return;
                     }
                 } else {
@@ -637,11 +655,9 @@ public class ChatActivity extends AppCompatActivity  {
                     }
                     //code for deny
                 }
-
-                return;
-
+            }
         }
-    }
+
 
 
     private String getDateTime() {
@@ -705,8 +721,6 @@ public class ChatActivity extends AppCompatActivity  {
     }
 
     private void getMessages(String iDChannel) {
-        getBitmapFromImage();
-
         db.collection("chatsChannel").document(iDChannel).collection("messages").
                 orderBy("date", Query.Direction.DESCENDING).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
@@ -724,15 +738,21 @@ public class ChatActivity extends AppCompatActivity  {
         });
     }
 
-    @Override
-    protected void onStart() {
-        super.onStart();
-
-
+    public void readDataFriendAccount(MyCallBackFriend myCallback,String idmassage) {
+        db.collection("users").whereEqualTo("id", idmassage)
+                .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    myCallback.onCallBack(task);
+                }
+            }
+        });
     }
 
     public void readDataChatsListener(MyCallBackChats myCallback) {
         db.collection("users").document(mAuth.getCurrentUser().getUid())
+                .collection("lastmessage").document(friendAccount.getId())
                 .addSnapshotListener(new EventListener<DocumentSnapshot>() {
                     @Override
                     public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
@@ -762,19 +782,44 @@ public class ChatActivity extends AppCompatActivity  {
                 collection("messages")
                 .add(chatModel);
 
-        Map<String, ChatModel> map = userAccountme.getMap();
-        map.put(friendAccount.getId(), chatModel);
+        LastMessages lastMessages = new LastMessages("",friendAccount.getImg_profile(),
+                friendAccount.getName(),
+                chatModel.getDate(),chatModel.getImage(),chatModel.getMessage(),
+                chatModel.getNameSender(),chatModel.getRecieveid()
+                ,chatModel.getRecord(),chatModel.getSenderid());
+
+        db.collection("users").
+                document(mAuth.getCurrentUser().getUid())
+                .collection("lastmessage")
+                .document(friendAccount.getId())
+                .set(lastMessages);
+
+        db.collection("users").
+                document(friendAccount.getId())
+                .collection("lastmessage")
+                .document(mAuth.getCurrentUser().getUid())
+                .set(lastMessages);
+
+        LastChat lastChat = new LastChat(friendAccount.getId(),friendAccount.getImg_profile(),
+                chatModel.getDate(),chatModel.getMessage(),chatModel.getNameSender());
+
+        Map<String,LastChat> map = friendAccount.getMap();
+        map.put(userAccountme.getId(),lastChat);
+        friendAccount.setMap(map);
+
+        map = userAccountme.getMap();
+        map.put(friendAccount.getId(),lastChat);
         userAccountme.setMap(map);
+
         db.collection("users").
                 document(mAuth.getCurrentUser().getUid())
                 .set(userAccountme);
 
-        map = friendAccount.getMap();
-        map.put(userAccountme.getId(), chatModel);
-        friendAccount.setMap(map);
         db.collection("users").
                 document(friendAccount.getId())
                 .set(friendAccount);
+
+
         //   mProgress.dismiss();
 
     }
@@ -850,7 +895,6 @@ public class ChatActivity extends AppCompatActivity  {
     }
 
 
-
     public void uploadAudio(Uri uri) {
         //mProgress.setMessage("Uploading Audio ...");
         //mProgress.show();
@@ -885,45 +929,18 @@ public class ChatActivity extends AppCompatActivity  {
         });
     }
 
-    public void statusCheck() {
-        LocationManager manager = null;
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.M) {
-            manager = (LocationManager) getSystemService(Context.LOCATION_SERVICE);
-        }
-
-        if (!manager.isProviderEnabled(LocationManager.GPS_PROVIDER)) {
-            buildAlertMessageNoGps();
-        }
-    }
-
-    private void buildAlertMessageNoGps() {
-        final AlertDialog.Builder builder = new AlertDialog.Builder(this);
-        builder.setMessage("Your GPS seems to be disabled, do you want to enable it?")
-                .setCancelable(false)
-                .setPositiveButton("Yes", new DialogInterface.OnClickListener() {
-                    public void onClick(final DialogInterface dialog, final int id) {
-                        startActivity(new Intent(android.provider.Settings.ACTION_LOCATION_SOURCE_SETTINGS));
-                    }
-                })
-                .setNegativeButton("No", new DialogInterface.OnClickListener() {
-                    public void onClick(final DialogInterface dialog, final int id) {
-                        dialog.cancel();
-                    }
-                });
-        final AlertDialog alert = builder.create();
-        alert.show();
-    }
-
-    public boolean isGPSEnabled(Context mContext) {
-        LocationManager locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
-        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
-    }
 
     @Override
     protected void onResume() {
         super.onResume();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Online");
+        if (mGoogleApiClient != null && mLocationRequest != null) {
+            mGoogleApiClient.connect();
+            if (mGoogleApiClient.isConnected()) {
+                startLocationUpdates();
+            }
+        }
     }
 
     @Override
@@ -931,10 +948,10 @@ public class ChatActivity extends AppCompatActivity  {
         super.onPause();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Offline");
+        stopLocationUpdate();
     }
 
     public String getFilename(){
-
         File file = new File(Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS).toString()
                 ,AUDIO_RECORDER_FOLDER);
         Log.e("file : ", file.getAbsolutePath());
@@ -948,12 +965,9 @@ public class ChatActivity extends AppCompatActivity  {
 
     public void startRecording(String path){
         recorder = new MediaRecorder();
-
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         recorder.setOutputFormat(output_formats[currentFormat]);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-
-        //recorder.setOutputFormat(MediaRecorder.OutputFormat.THREE_GPP);
         recorder.setOutputFile(path);
 
         try {
@@ -970,14 +984,7 @@ public class ChatActivity extends AppCompatActivity  {
         }
     }
 
-
-
     public void stopRecording(){
-       /* if (recordFile!=null){
-            recordFile.delete();
-        }
-
-        */
         try {
             recorder.stop();
             recorder.release();
@@ -986,4 +993,215 @@ public class ChatActivity extends AppCompatActivity  {
             e.printStackTrace();
         }
     }
+
+    @Override
+    public void onLocationChanged(@NonNull Location location) {
+        Lat = location.getLatitude();
+        Lon = location.getLongitude();
+        Log.e("onLocationChanged : ", Lat + "    " + Lon);
+
+    }
+
+    public boolean isGPSEnabled(Context mContext) {
+        LocationManager locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
+        return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
+    }
+
+    public void checkRunTimePermission() {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED ||
+                    ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED ||
+                    ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+                Log.e("checkRunTime : ", "true");
+                // make a buidler for GoogleApiClient //
+                createLocationRequest();
+
+            } else {
+                requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION},
+                        REQUESTPERMISSIONSLOCATION);
+            }
+        } else {
+            if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                    == PackageManager.PERMISSION_GRANTED ||
+                    ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+                // make a buidler for GoogleApiClient //
+                createLocationRequest();
+            }
+        }
+    }
+
+    @Override
+    public void startActivityForResult(Intent intent, int requestCode) {
+        super.startActivityForResult(intent, requestCode);
+        switch (requestCode) {
+            case REQUESTPERMISSIONSFINE_LOCATION:
+                Log.e("startActivity : ", "startActivity");
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+                    if (ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_FINE_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED ||
+                            ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_COARSE_LOCATION)
+                                    == PackageManager.PERMISSION_GRANTED
+                            || ActivityCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.ACCESS_BACKGROUND_LOCATION)
+                            == PackageManager.PERMISSION_GRANTED) {
+                        Log.e("startActivity : ", "true");
+                        // make a buidler for GoogleApiClient //
+
+                        createLocationRequest();
+
+                    } else {
+                        requestPermissions(new String[]{Manifest.permission.ACCESS_COARSE_LOCATION, Manifest.permission.ACCESS_FINE_LOCATION,
+                                Manifest.permission.ACCESS_BACKGROUND_LOCATION}, REQUESTPERMISSIONSLOCATION);
+                        Log.e("startActivity : ", "false");
+                    }
+                }
+                break;
+            default:
+                break;
+        }
+    }
+
+    @SuppressLint("MissingPermission")
+    protected void createLocationRequest() {
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+            mLocationRequest = new LocationRequest();
+            mLocationRequest.setInterval(1000 * 60);  // 1 Minute
+            mLocationRequest.setFastestInterval(1000 * 5); // 5 SECONDS
+            mLocationRequest.setPriority(LocationRequest.PRIORITY_BALANCED_POWER_ACCURACY);
+            mLocationRequest.setSmallestDisplacement(1);
+
+            if (mGoogleApiClient == null) {
+                mGoogleApiClient = new GoogleApiClient.Builder(getApplicationContext())
+                        .addConnectionCallbacks(this)
+                        .addOnConnectionFailedListener(this)
+                        .addApi(LocationServices.API)
+                        .build();
+            }
+        }
+
+    }
+
+    // must declare methods //
+    public void onStart() {
+        super.onStart();
+        Log.e("onStart : ", "onStart");
+        if (mGoogleApiClient != null && mLocationRequest != null) {
+            mGoogleApiClient.connect();
+            if (mGoogleApiClient.isConnected()) {
+                startLocationUpdates();
+            }
+        }
+    }
+
+    public void onStop() {
+        super.onStop();
+        Log.e("onStop : ", "onStop");
+        stopLocationUpdate();
+    }
+
+    // create method for location update //
+    @SuppressLint("MissingPermission")
+    protected void startLocationUpdates() {
+        Log.e("startLocationUpdates : ", "startLocationUpdates");
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION)
+                == PackageManager.PERMISSION_GRANTED) {
+
+            LocationServices.FusedLocationApi.requestLocationUpdates(mGoogleApiClient, mLocationRequest, this);
+
+        }
+    }
+
+    protected void stopLocationUpdate() {
+        Log.e("stopLocationUpdate : ", "stopLocationUpdate");
+        if (mGoogleApiClient != null && mLocationRequest != null) {
+            if (mGoogleApiClient.isConnected())
+                LocationServices.FusedLocationApi.removeLocationUpdates(mGoogleApiClient, this);
+            mGoogleApiClient.disconnect();
+        }
+    }
+
+
+    private void requestGps() {
+        Log.e("requestGps: ",geoUri);
+        LocationSettingsRequest.Builder builder = new LocationSettingsRequest.Builder()
+                .addLocationRequest(mLocationRequest);
+        builder.setAlwaysShow(true);
+
+        PendingResult<LocationSettingsResult> result = LocationServices.SettingsApi.checkLocationSettings(mGoogleApiClient, builder.build());
+
+        result.setResultCallback(new ResultCallback<LocationSettingsResult>() {
+            @Override
+            public void onResult(LocationSettingsResult result) {
+                final Status status = result.getStatus();
+                //final LocationSettingsStates state = result.getLocationSettingsStates();
+                switch (status.getStatusCode()) {
+                    case LocationSettingsStatusCodes.SUCCESS:
+                        Log.e("LocationStatus : ", "SUCCESS");
+
+                        // All location settings are satisfied. The client can initialize location
+                        // requests here.
+                        //...
+                        break;
+                    case LocationSettingsStatusCodes.RESOLUTION_REQUIRED:
+                        Log.e("LocationStatus : ", "RESOLUTION_REQUIRED");
+
+                        // Location settings are not satisfied. But could be fixed by showing the user
+                        // a dialog.
+                        try {
+                            // Show the dialog by calling startResolutionForResult(),
+                            // and check the result in onActivityResult().
+                            status.startResolutionForResult(
+                                    ChatActivity.this,
+                                    2000);
+                        } catch (IntentSender.SendIntentException e) {
+                            // Ignore the error.
+                        }
+                        break;
+                    case LocationSettingsStatusCodes.SETTINGS_CHANGE_UNAVAILABLE:
+                        // Location settings are not satisfied. However, we have no way to fix the
+                        // settings so we won't show the dialog.
+                        //...
+                        break;
+                }
+            }
+        });
+    }
+
+    // Must Declare Callback Methods //
+    @SuppressLint("MissingPermission")
+    public void onConnected(Bundle args0) {
+        Log.e("onConnected : ", "onConnected");
+        if (ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED
+                || ContextCompat.checkSelfPermission(getApplicationContext(), Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            requestGps();
+
+            mLocation = LocationServices.FusedLocationApi.getLastLocation(mGoogleApiClient);
+            if (mLocation != null) {
+               Lat = mLocation.getLatitude();
+               Lon = mLocation.getLongitude();
+                //mapFragment.getMapAsync(this);
+            }
+
+            if (mGoogleApiClient != null && mLocationRequest != null && mGoogleApiClient.isConnected()) {
+                startLocationUpdates();
+            }
+        }
+    }
+
+    public void onConnectionFailed(ConnectionResult result) {
+    }
+
+
+    @Override
+    public void onConnectionSuspended(int i) {
+
+    }
+
 }

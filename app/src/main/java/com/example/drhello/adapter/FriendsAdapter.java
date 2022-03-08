@@ -10,6 +10,7 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.drhello.LastChat;
 import com.example.drhello.model.LastMessages;
 import com.example.drhello.R;
 import com.example.drhello.model.ChatModel;
@@ -27,12 +28,12 @@ import de.hdodenhof.circleimageview.CircleImageView;
 
 public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsViewHolder> {
     private Context context;
-    private ArrayList<LastMessages> userAccountArrayList = new ArrayList<>();
+    private ArrayList<LastChat> userAccountArrayList = new ArrayList<>();
     private OnFriendsClickListener onFriendsClickListener;
     private UserAccount userAccount1;
     DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss:SS a", Locale.US);
 
-    public FriendsAdapter(Context context, ArrayList<LastMessages> userAccountArrayList, OnFriendsClickListener onFriendsClickListener, UserAccount userAccount1) {
+    public FriendsAdapter(Context context, ArrayList<LastChat> userAccountArrayList, OnFriendsClickListener onFriendsClickListener, UserAccount userAccount1) {
         this.context = context;
         this.userAccountArrayList = userAccountArrayList;
         this.onFriendsClickListener = onFriendsClickListener;
@@ -40,11 +41,12 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsV
 
         for (int i = 0; i < userAccountArrayList.size(); i++) {
             for (int j = i + 1; j < userAccountArrayList.size(); j++) {
-                if (userAccount1.getMap().containsKey(userAccountArrayList.get(i).getId()) &&
-                        userAccount1.getMap().containsKey(userAccountArrayList.get(j).getId())) {
+                if (userAccount1.getMap().containsKey(userAccountArrayList.get(i).getIdFriend()) &&
+                        userAccount1.getMap().containsKey(userAccountArrayList.get(j).getIdFriend())) {
                     try {
-                        Date date1 = dateFormat.parse(userAccount1.getMap().get(userAccountArrayList.get(i).getId()).getDate());
-                        Date date2 = dateFormat.parse(userAccount1.getMap().get(userAccountArrayList.get(j).getId()).getDate());
+                        LastChat lastChat = (LastChat) userAccount1.getMap().get(userAccountArrayList.get(i).getIdFriend());
+                        Date date1 = dateFormat.parse(lastChat.getDate());
+                        Date date2 = dateFormat.parse(lastChat.getDate());
                         if (date1.getTime() < date2.getTime()) {
                             Collections.swap(userAccountArrayList, i, j);
                         }
@@ -66,14 +68,15 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsV
 
     @Override
     public void onBindViewHolder(@NonNull FriendsAdapter.FriendsViewHolder holder, int position) {
-        LastMessages userAccount = userAccountArrayList.get(position);
+        LastChat userAccount = userAccountArrayList.get(position);
 
-        holder.name_user.setText(userAccount.getName_person());
+        holder.name_user.setText(userAccount.getNameSender());
 
         if (userAccount1.getMap() != null) {
-            if (userAccount1.getMap().containsKey(userAccount.getId())) {
-                ChatModel chatModel = userAccount1.getMap().get(userAccount.getId());
+            if (userAccount1.getMap().containsKey(userAccount.getIdFriend())) {
+                LastChat lastChat = (LastChat) userAccount1.getMap().get(userAccount.getIdFriend());
                 DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss:SS a", Locale.US);
+                /*
                 if (chatModel.getMessage().equals("") && chatModel.getRecord().equals("")) {
                     holder.last_message.setText(userAccount.getNameSender() + " Sent a Photo ");
                 } else if (chatModel.getMessage().equals("") && chatModel.getImage().equals("")) {
@@ -87,17 +90,20 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsV
                     }
                 }
 
+*/
+                holder.last_message.setText(lastChat.getMessage());
+
                 try {
                     Date date1 = dateFormat.parse(getDateTime());
-                    Date date2 = dateFormat.parse(chatModel.getDate());
+                    Date date2 = dateFormat.parse(lastChat.getDate());
                     long data = date1.getTime() - date2.getTime();
                     int timeInSeconds = (int) (data / 1000);
                     int days = timeInSeconds / (3600 * 24);
                     if (days >= 1) {
-                        holder.date.setText(chatModel.getDate().split(" ")[0]);
+                        holder.date.setText(lastChat.getDate().split(" ")[0]);
                     } else {
-                        String time = splitDateTime(chatModel.getDate())[1].substring(0, splitDateTime(chatModel.getDate())[1].length() - 6) + " ";
-                        String timestamp = time + splitDateTime(chatModel.getDate())[2];
+                        String time = splitDateTime(lastChat.getDate())[1].substring(0, splitDateTime(lastChat.getDate())[1].length() - 6) + " ";
+                        String timestamp = time + splitDateTime(lastChat.getDate())[2];
                         holder.date.setText(timestamp);
                     }
                 } catch (ParseException e) {

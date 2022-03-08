@@ -1,5 +1,6 @@
 package com.example.drhello.model;
 
+import com.example.drhello.LastChat;
 import com.example.drhello.model.AddPersonModel;
 import com.example.drhello.model.ChatModel;
 import com.example.drhello.ui.profile.UserInformation;
@@ -10,7 +11,7 @@ import java.util.Map;
 
 public class UserAccount implements Serializable {
     private String img_profile , name , email , pass ,date , id , tokenID , sign_up_method ,state;
-    private Map<String,ChatModel> map = new HashMap<>();
+    private Map<String, LastChat> map = new HashMap<>();
     private UserInformation userInformation;
     private Map<String, AddPersonModel> friendsmap = new HashMap<>();
     private Map<String, AddPersonModel> requests = new HashMap<>();
@@ -48,11 +49,11 @@ public class UserAccount implements Serializable {
         this.sign_up_method = sign_up_method;
     }
 
-    public Map<String, ChatModel> getMap() {
+    public Map<String, LastChat> getMap() {
         return map;
     }
 
-    public void setMap(Map<String, ChatModel> map) {
+    public void setMap(Map<String, LastChat> map) {
         this.map = map;
     }
 

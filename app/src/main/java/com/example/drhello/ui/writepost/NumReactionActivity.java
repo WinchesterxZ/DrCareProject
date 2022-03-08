@@ -15,11 +15,16 @@ import com.example.drhello.R;
 import com.example.drhello.StateOfUser;
 import com.example.drhello.adapter.TabAdapter;
 import com.example.drhello.databinding.ActivityNumReactionBinding;
+import com.example.drhello.firebaseinterface.MyCallbackAllUser;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
 import com.example.drhello.model.Posts;
 import com.example.drhello.model.UserAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.tabs.TabLayout;
+import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -36,6 +41,7 @@ public class NumReactionActivity extends AppCompatActivity {
     private ArrayList<UserAccount> userAccountArrayList = new ArrayList<>();
     private int likeItem=0,loveItem=0,hahaItem=0,sadItem=0,wowItem=0,angryItem=0;
     public static ProgressDialog mProgress;
+    FirebaseFirestore db = FirebaseFirestore.getInstance();
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -53,7 +59,6 @@ public class NumReactionActivity extends AppCompatActivity {
         Objects.requireNonNull(getSupportActionBar()).setTitle("");
 
         posts = (Posts) getIntent().getSerializableExtra("post");
-
 
         activityNumReactionBinding.imgBackReaction.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -106,9 +111,7 @@ public class NumReactionActivity extends AppCompatActivity {
                         angryItem++;
                         break;
                 }
-
             }
-
         }
 
 
@@ -139,48 +142,41 @@ public class NumReactionActivity extends AppCompatActivity {
         }
 
 
-        FirebaseFirestore db = FirebaseFirestore.getInstance();
-        db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+       readData(new MyCallbackAllUser() {
+           @Override
+           public void onCallback(Task<QuerySnapshot> task) {
+               for (DocumentSnapshot document : task.getResult().getDocuments()) {
+                   UserAccount userAccount = document.toObject(UserAccount.class);
+                   userAccountArrayList.add(userAccount);
+               }
+               mProgress.dismiss();
+               Log.e("onEvent: ",userAccountArrayList.size()+"");
 
-                Log.e("onEvent: ","NUMREACTION");
-                userAccountArrayList.clear();
-                for (DocumentSnapshot document : task.getResult().getDocuments()) {
-                    UserAccount userAccount = document.toObject(UserAccount.class);
-                    userAccountArrayList.add(userAccount);
-                }
+               TabAdapter adapter = new TabAdapter(NumReactionActivity.this, getSupportFragmentManager(),
+                       activityNumReactionBinding.TabReaction.getTabCount(), posts.getReactions(), userAccountArrayList, strings);
+               activityNumReactionBinding.viewPager.setAdapter(adapter);
 
-                Log.e("onEvent: ",userAccountArrayList.size()+"");
+               activityNumReactionBinding.viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(activityNumReactionBinding.TabReaction));
 
-                TabAdapter adapter = new TabAdapter(NumReactionActivity.this, getSupportFragmentManager(),
-                        activityNumReactionBinding.TabReaction.getTabCount(), posts.getReactions(), userAccountArrayList, strings);
-                activityNumReactionBinding.viewPager.setAdapter(adapter);
+               activityNumReactionBinding.TabReaction.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
+                   @Override
+                   public void onTabSelected(TabLayout.Tab tab) {
+                       activityNumReactionBinding.viewPager.setCurrentItem(tab.getPosition());
+                   }
 
-                activityNumReactionBinding.viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(activityNumReactionBinding.TabReaction));
+                   @Override
+                   public void onTabUnselected(TabLayout.Tab tab) {
 
-                activityNumReactionBinding.TabReaction.addOnTabSelectedListener(new TabLayout.OnTabSelectedListener() {
-                    @Override
-                    public void onTabSelected(TabLayout.Tab tab) {
-                        activityNumReactionBinding.viewPager.setCurrentItem(tab.getPosition());
-                    }
+                   }
 
-                    @Override
-                    public void onTabUnselected(TabLayout.Tab tab) {
+                   @Override
+                   public void onTabReselected(TabLayout.Tab tab) {
 
-                    }
+                   }
+               });
+           }
+       });
 
-                    @Override
-                    public void onTabReselected(TabLayout.Tab tab) {
-
-                    }
-                });
-
-
-                Log.e("hossops :",userAccountArrayList.size()+"");
-
-            }
-        });
 
         activityNumReactionBinding.imgBackReaction.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -188,6 +184,21 @@ public class NumReactionActivity extends AppCompatActivity {
                 finish();
             }
             });
+    }
+
+    public void readData(MyCallbackAllUser myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                Log.e("onEvent: ","NUMREACTION");
+                userAccountArrayList.clear();
+                myCallback.onCallback(task);
+                Log.e("hossops :",userAccountArrayList.size()+"");
+            }
+        });
     }
 
     @Override

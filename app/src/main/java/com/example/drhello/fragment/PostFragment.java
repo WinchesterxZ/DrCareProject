@@ -22,6 +22,11 @@ import androidx.lifecycle.Observer;
 import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
+import com.example.drhello.adapter.WriteCommentAdapter;
+import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
+import com.example.drhello.firebaseinterface.MyCallBackReaction;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
+import com.example.drhello.model.CommentModel;
 import com.example.drhello.ui.writepost.NumReactionActivity;
 import com.example.drhello.model.ReactionType;
 import com.example.drhello.model.Posts;
@@ -35,8 +40,10 @@ import com.example.drhello.adapter.OnPostClickListener;
 import com.example.drhello.adapter.PostsAdapter;
 import com.example.drhello.model.UserAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
@@ -49,8 +56,6 @@ import java.util.Objects;
 
 public class PostFragment extends Fragment implements OnPostClickListener{
 
-    private static final String ARG_PARAM1 = "param1";
-    private static final String ARG_PARAM2 = "param2";
     private Button btn_write_post;
     ArrayList<Posts> postsArrayList=new ArrayList<>();
     private TextView textView;
@@ -59,21 +64,11 @@ public class PostFragment extends Fragment implements OnPostClickListener{
     private ArrayList<String>strings=new ArrayList<>();
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
-    UserViewModel userViewModel;
+    public static ProgressDialog mProgress;
     ImageView image_user;
 
     public PostFragment() {
         // Required empty public constructor
-    }
-
-
-    public static PostFragment newInstance(String param1, String param2) {
-        PostFragment fragment = new PostFragment();
-        Bundle args = new Bundle();
-        args.putString(ARG_PARAM1, param1);
-        args.putString(ARG_PARAM2, param2);
-        fragment.setArguments(args);
-        return fragment;
     }
 
     @Override
@@ -93,21 +88,26 @@ public class PostFragment extends Fragment implements OnPostClickListener{
         image_user = view.findViewById(R.id.user_image);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        mProgress = new ProgressDialog(getActivity());
 
-        userViewModel = new UserViewModel();
-        userViewModel = ViewModelProviders.of(getActivity()).get(UserViewModel.class);
-        userViewModel.getUser(mAuth,db);
-        userViewModel.UserMutableLiveData.observe(getActivity(), new Observer<UserAccount>() {
+        readData(new MyCallbackUser() {
             @Override
-            public void onChanged(UserAccount userAccount) {
-                try{
-                    Glide.with(getActivity()).load(userAccount.getImg_profile()).placeholder(R.drawable.user).
-                            error(R.drawable.user).into(image_user);
-                }catch (Exception e){
-                    image_user.setImageResource(R.drawable.user);
+            public void onCallback(DocumentSnapshot documentSnapshot) {
+                if(!documentSnapshot.exists()){
+                    FirebaseAuth.getInstance().getCurrentUser().delete();
+                }else{
+                    UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
+                    try{
+                        Glide.with(getActivity()).load(userAccount.getImg_profile()).placeholder(R.drawable.user).
+                                error(R.drawable.user).into(image_user);
+                    }catch (Exception e){
+                        image_user.setImageResource(R.drawable.user);
+                    }
                 }
+                mProgress.dismiss();
             }
         });
+
 
 
         btn_write_post.setOnClickListener(new View.OnClickListener() {
@@ -121,30 +121,51 @@ public class PostFragment extends Fragment implements OnPostClickListener{
                 PostFragment.this,getActivity().getSupportFragmentManager());
         recycler_posts.setAdapter(postsAdapter);
 
-        db.collection("posts").orderBy("date", Query.Direction.DESCENDING)
-                .addSnapshotListener(new EventListener<QuerySnapshot>() {
-                    @Override
-                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
-                        if (mAuth.getCurrentUser() != null) {
-
-                            Log.e("lostart2 : ",postsArrayList.size()+"");
-                            postsArrayList.clear();
-                            for (DocumentSnapshot document : value.getDocuments()) {
-                                Posts singele_posts = document.toObject(Posts.class);
-                                postsArrayList.add(singele_posts);
-                                postsAdapter.FunPostsAdapter(postsArrayList);
-                                postsAdapter.notifyDataSetChanged();
-                            }
-
-                        }
-                    }
-                });
-
-
+        readDataPostsListener(new MyCallBackListenerComments() {
+            @Override
+            public void onCallBack(QuerySnapshot value) {
+                Log.e("lostart2 : ",postsArrayList.size()+"");
+                for (DocumentSnapshot document : value.getDocuments()) {
+                    Posts singele_posts = document.toObject(Posts.class);
+                    postsArrayList.add(singele_posts);
+                    postsAdapter.FunPostsAdapter(postsArrayList);
+                    postsAdapter.notifyDataSetChanged();
+                }
+            }
+        });
 
         return view;
     }
 
+    public void readDataPostsListener(MyCallBackListenerComments myCallback) {
+
+        db.collection("posts").orderBy("date", Query.Direction.DESCENDING)
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+                        postsArrayList.clear();
+                        if (mAuth.getCurrentUser() != null) {
+                            myCallback.onCallBack(value);
+                        }
+                    }
+                });
+    }
+
+    public void readData(MyCallbackUser myCallback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            mProgress.setMessage("Loading..");
+            mProgress.setCancelable(false);
+            mProgress.show();
+            FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            });
+        }
+    }
 
 
     @Override
@@ -181,20 +202,28 @@ public class PostFragment extends Fragment implements OnPostClickListener{
             arrayList.put(mAuth.getCurrentUser().getUid(),reactionType.getReactionType());
         }
         posts.setReactions(arrayList);
+
+        readDataReadction(new MyCallBackReaction() {
+            @Override
+            public void onCallBack(Task<Void> task) {
+                if(task.isSuccessful())
+                    mProgress.dismiss();
+            }
+        },posts);
+
+    }
+
+    public void readDataReadction(MyCallBackReaction myCallback, Posts posts) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         db.collection("posts").document(posts.getPostId()).set(posts)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
-            @Override
-            public void onComplete(@NonNull Task<Void> task) {
-                if (task.isSuccessful()){
-                    onResume();
-                    Log.e("equals " , "isSuccessful");
-//                    Toast.makeText(getActivity(), "reaction user", Toast.LENGTH_SHORT).show();
-                }else {
-//                    Toast.makeText(getActivity(), "reaction error ", Toast.LENGTH_SHORT).show();
-                }
-            }
-        });
-
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        myCallback.onCallBack(task);
+                    }
+                });
     }
 
     private boolean isNetworkAvailable() {

@@ -1,5 +1,7 @@
 package com.example.drhello.ui.writecomment;
 
+import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
@@ -22,6 +24,10 @@ import android.view.inputmethod.InputMethodManager;
 
 import com.bumptech.glide.Glide;
 import com.example.drhello.StateOfUser;
+import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
+import com.example.drhello.firebaseinterface.MyCallBackWriteComment;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
+import com.example.drhello.model.UserAccount;
 import com.example.drhello.textclean.RequestPermissions;
 import com.example.drhello.model.CommentModel;
 import com.example.drhello.viewmodel.CommentViewModel;
@@ -30,10 +36,19 @@ import com.example.drhello.R;
 import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.adapter.WriteCommentAdapter;
 import com.example.drhello.databinding.ActivityInsideCommentBinding;
+import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
+import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -63,6 +78,12 @@ public class InsideCommentActivity extends AppCompatActivity {
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_inside_comment);
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
+            getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
+        } else {
+            getWindow().setStatusBarColor(Color.WHITE);
+        }
+
         requestPermissions = new RequestPermissions(InsideCommentActivity.this,InsideCommentActivity.this);
         commentBinding = DataBindingUtil.setContentView(this, R.layout.activity_inside_comment);
 
@@ -105,9 +126,8 @@ public class InsideCommentActivity extends AppCompatActivity {
             }
         });
 
-
-        FirebaseAuth mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        mProgress = new ProgressDialog(this);
 
         commentModel = (CommentModel) getIntent().getSerializableExtra("commentModel");
         posts = (Posts) getIntent().getSerializableExtra("postsModel");
@@ -116,14 +136,14 @@ public class InsideCommentActivity extends AppCompatActivity {
         commentBinding.userOnly.setText(commentModel.getUser_name());
         commentModel2.setPost_id(posts.getPostId());
 
-        UserViewModel userViewModel ;
-        userViewModel = ViewModelProviders.of(InsideCommentActivity.this).get(UserViewModel.class);
-        userViewModel.getUser(mAuth,db);
-
-        userViewModel.UserMutableLiveData.observe(InsideCommentActivity.this, userAccount -> {
-            commentModel2.setUser_image(userAccount.getImg_profile());
-            commentModel2.setUser_id(userAccount.getId());
-            commentModel2.setUser_name(userAccount.getName());
+        readDataUser(new MyCallbackUser() {
+            @Override
+            public void onCallback(DocumentSnapshot documentSnapshot) {
+                UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
+                commentModel2.setUser_image(userAccount.getImg_profile());
+                commentModel2.setUser_id(userAccount.getId());
+                commentModel2.setUser_name(userAccount.getName());
+            }
         });
 
         try{
@@ -152,19 +172,8 @@ public class InsideCommentActivity extends AppCompatActivity {
             commentBinding.comment.setText(commentModel.getComment());
         }
 
-
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
-            getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
-        } else {
-            getWindow().setStatusBarColor(Color.WHITE);
-        }
-
-
-        mProgress = new ProgressDialog(this);
-
         commentViewModel = new CommentViewModel();
         commentViewModel = ViewModelProviders.of(InsideCommentActivity.this).get(CommentViewModel.class);
-
 
         commentBinding.fabImage.setOnClickListener(view -> {
             if (requestPermissions.permissionStorageRead()) {
@@ -221,15 +230,19 @@ public class InsideCommentActivity extends AppCompatActivity {
             imm.hideSoftInputFromWindow(commentBinding.editMessage.getWindowToken(), 0);
         });
 
-        commentViewModel.getComments(db,posts,commentModel);
-        commentViewModel.commentsMutableLiveData.observe(InsideCommentActivity.this, commentModels -> {
-
-            writeCommentAdapter = new WriteCommentAdapter(InsideCommentActivity.this,commentModels,
-                    null,getSupportFragmentManager());
-            commentBinding.recycleComments.setAdapter(writeCommentAdapter);
-            mProgress.dismiss();
-
-
+        readDataComments(new MyCallBackWriteComment() {
+            @Override
+            public void onCallback(Task<QuerySnapshot> task) {
+                commentModels.clear();
+                for (QueryDocumentSnapshot document : task.getResult()) {
+                    CommentModel commentModel = document.toObject(CommentModel.class);
+                    commentModels.add(commentModel);
+                }
+                writeCommentAdapter = new WriteCommentAdapter(InsideCommentActivity.this,commentModels,
+                        null,getSupportFragmentManager());
+                commentBinding.recycleComments.setAdapter(writeCommentAdapter);
+                mProgress.dismiss();
+            }
         });
 
         commentBinding.backComment.setOnClickListener(new View.OnClickListener() {
@@ -250,14 +263,16 @@ public class InsideCommentActivity extends AppCompatActivity {
                 commentBinding.relImageComment.setVisibility(View.GONE);
             }
         });
+    }
 
-        db.collection("posts").document(posts.getPostId()).
-                collection("comments").document(commentModel.getComment_id())
-                .collection("InsideComments")
-                .orderBy("date", Query.Direction.DESCENDING)
-                .addSnapshotListener((value, error) -> {
+    @Override
+    protected void onStart() {
+        super.onStart();
+        if (commentModels != null) {
+            readDataCommentsListener(new MyCallBackListenerComments() {
+                @Override
+                public void onCallBack(QuerySnapshot value) {
                     commentModels.clear();
-                    assert value != null;
                     for (DocumentSnapshot document : value.getDocuments()) {
                         CommentModel commentModel = document.toObject(CommentModel.class);
                         commentModels.add(commentModel);
@@ -265,10 +280,25 @@ public class InsideCommentActivity extends AppCompatActivity {
                     writeCommentAdapter = new WriteCommentAdapter(InsideCommentActivity.this,commentModels,
                             null,getSupportFragmentManager());
                     commentBinding.recycleComments.setAdapter(writeCommentAdapter);
-
-                });
+                    mProgress.dismiss();
+                }
+            });
+        }
     }
 
+    public void readDataCommentsListener(MyCallBackListenerComments myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("posts").document(posts.getPostId()).
+                collection("comments").document(commentModel.getComment_id())
+                .collection("InsideComments")
+                .orderBy("date", Query.Direction.DESCENDING)
+                .addSnapshotListener((value, error) -> {
+                    commentModels.clear();
+                    myCallback.onCallBack(value);
+                });
+    }
 
     public void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
@@ -309,12 +339,50 @@ public class InsideCommentActivity extends AppCompatActivity {
 
     }
 
+    public void readDataUser(MyCallbackUser myCallback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            mProgress.setMessage("Loading..");
+            mProgress.setCancelable(false);
+            mProgress.show();
+            FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            });
+        }
+    }
+
+    public void readDataComments(MyCallBackWriteComment myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("posts").document(posts.getPostId()).
+                collection("comments").document(commentModel.getComment_id())
+                .collection("InsideComments").orderBy("date", Query.Direction.DESCENDING)
+                .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    Log.e("task : ", " tast");
+                    if (task.isSuccessful()) {
+                        myCallback.onCallback(task);
+                        Log.e("task : ", " tast");
+                    } else {
+                        Log.e("noti error", task.getException().getMessage());
+                    }
+                }
+            }
+        });
+    }
+
     private String getDateTime() {
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss a", Locale.US);
         Date date = new Date();
         return dateFormat.format(date);
     }
-
 
     @Override
     protected void onResume() {

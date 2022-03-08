@@ -15,6 +15,7 @@ import android.widget.SeekBar;
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 import com.bumptech.glide.Glide;
+import com.example.drhello.model.LastMessages;
 import com.example.drhello.ui.chats.AsyncTaskDownloadAudio;
 import com.example.drhello.ui.chats.MediaPlayerCustom;
 import com.example.drhello.R;
@@ -401,6 +402,23 @@ public class Recycle_Message_Adapter extends RecyclerView.Adapter<RecyclerView.V
                 break;
         }
 
+    }
+
+    public void updateMessage(ArrayList<ChatModel> list_message){
+        this.list_message = list_message;
+        notifyDataSetChanged();
+    }
+
+    public void addMessage(ChatModel chatModel){
+      //  list_message.add(chatModel);
+        if(!list_message.contains(chatModel)){
+
+            Log.e("list_message: " , list_message.contains(chatModel)+"");
+
+            list_message.add(0,chatModel);
+        }
+
+       // notifyDataSetChanged();
     }
 
 

@@ -1,10 +1,12 @@
 package com.example.drhello.ui.writecomment;
 
 import androidx.annotation.NonNull;
+import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.lifecycle.ViewModelProviders;
+
 import android.Manifest;
 import android.app.Activity;
 import android.app.ProgressDialog;
@@ -22,6 +24,11 @@ import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
 import com.example.drhello.StateOfUser;
+import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
+import com.example.drhello.firebaseinterface.MyCallBackReaction;
+import com.example.drhello.firebaseinterface.MyCallBackWriteComment;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
+import com.example.drhello.model.UserAccount;
 import com.example.drhello.textclean.RequestPermissions;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
 import com.example.drhello.model.ReactionType;
@@ -36,11 +43,18 @@ import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.adapter.OnCommentClickListener;
 import com.example.drhello.adapter.WriteCommentAdapter;
 import com.google.android.gms.tasks.OnCompleteListener;
+import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
+import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
+
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.text.DateFormat;
@@ -68,17 +82,18 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
     public static ActivityWriteCommentBinding MainCommentBinding;
     private String postID;
     private RequestPermissions requestPermissions;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_write_comment);
-        requestPermissions = new RequestPermissions(WriteCommentActivity.this,WriteCommentActivity.this);
+        requestPermissions = new RequestPermissions(WriteCommentActivity.this, WriteCommentActivity.this);
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
             getWindow().getDecorView().setSystemUiVisibility(getWindow().getDecorView().getSystemUiVisibility() | View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR);
         } else {
             getWindow().setStatusBarColor(Color.WHITE);
         }
-
+        mProgress = new ProgressDialog(this);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         commentViewModel = new CommentViewModel();
@@ -87,8 +102,25 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
         postID = getIntent().getStringExtra("postID");
 
         if (postID != null) {
-            Log.e("write : ", postID+"  hoos");
-            db.collection("posts").document(postID).get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            Log.e("write : ", postID + "  hoos");
+            readData(new MyCallBackWriteComment() {
+                @Override
+                public void onCallback(Task<QuerySnapshot> task) {
+                    commentModels.clear();
+                    for (QueryDocumentSnapshot document : task.getResult()) {
+                        CommentModel commentModel = document.toObject(CommentModel.class);
+                        commentModels.add(commentModel);
+                    }
+                    mProgress.dismiss();
+                    writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this, commentModels,
+                            WriteCommentActivity.this, getSupportFragmentManager());
+                    MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
+                    mProgress.dismiss();
+                }
+            });
+            /*
+            db.collection("posts").document(postID)
+                    .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
                 @Override
                 public void onComplete(@NonNull Task<DocumentSnapshot> task) {
                     if (task.isSuccessful()) {
@@ -97,7 +129,7 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                         commentViewModel.getComments(db, posts, null);
                         commentViewModel.commentsMutableLiveData.observe(WriteCommentActivity.this, commentModels -> {
                             writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this, commentModels,
-                                    WriteCommentActivity.this,getSupportFragmentManager());
+                                    WriteCommentActivity.this, getSupportFragmentManager());
                             MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
                             mProgress.dismiss();
                         });
@@ -107,27 +139,27 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                     }
                 }
             });
+            */
             Log.e("notification", postID);
         } else {
             posts = (Posts) getIntent().getSerializableExtra("post");
-
-            commentViewModel.getComments(db, posts, null);
-            commentViewModel.commentsMutableLiveData.observe(WriteCommentActivity.this, commentModels -> {
-                writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this, commentModels,
-                        WriteCommentActivity.this,getSupportFragmentManager());
-                MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
-                mProgress.dismiss();
+            readDataComments(new MyCallBackWriteComment() {
+                @Override
+                public void onCallback(Task<QuerySnapshot> task) {
+                    commentModels.clear();
+                    for (QueryDocumentSnapshot document : task.getResult()) {
+                        CommentModel commentModel = document.toObject(CommentModel.class);
+                        commentModels.add(commentModel);
+                    }
+                    mProgress.dismiss();
+                    writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this, commentModels,
+                            WriteCommentActivity.this, getSupportFragmentManager());
+                    MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
+                }
             });
-
-          //  Log.e("posts : ", posts.getPostId());
         }
 
-
         MainCommentBinding = DataBindingUtil.setContentView(this, R.layout.activity_write_comment);
-
-
-        mProgress = new ProgressDialog(this);
-
 
         MainCommentBinding.constraintCommentRoot.getViewTreeObserver().addOnGlobalLayoutListener(new ViewTreeObserver.OnGlobalLayoutListener() {
             @Override
@@ -142,19 +174,19 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                     }
                 } else {
                     Log.e("MyActivity", "keyboard closed");
-                    String text=MainCommentBinding.editMessage.getText().toString().trim();
+                    String text = MainCommentBinding.editMessage.getText().toString().trim();
 
                     if (check_img == false) {
-                        if (bitmap!=null){
+                        if (bitmap != null) {
                             MainCommentBinding.relImage.setVisibility(View.VISIBLE);
-                        }else {
+                        } else {
                             MainCommentBinding.relImage.setVisibility(View.GONE);
                         }
                         MainCommentBinding.linOption.setVisibility(View.VISIBLE);
-                        
-                        if (!text.isEmpty() || bitmap!=null){
+
+                        if (!text.isEmpty() || bitmap != null) {
                             MainCommentBinding.constraintSend.setVisibility(View.VISIBLE);
-                        }else {
+                        } else {
                             MainCommentBinding.constraintSend.setVisibility(View.GONE);
                         }
                     } else {
@@ -167,9 +199,6 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
             }
         });
 
-
-
-
         MainCommentBinding.btnCancel.setOnClickListener(v -> {
             bitmap = null;
             check_img = false;
@@ -178,18 +207,16 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
             MainCommentBinding.constraintSend.setVisibility(View.GONE);
         });
 
-
-        UserViewModel userViewModel;
-        userViewModel = ViewModelProviders.of(WriteCommentActivity.this).get(UserViewModel.class);
-        userViewModel.getUser(mAuth, db);
-
-        userViewModel.UserMutableLiveData.observe(WriteCommentActivity.this, userAccount -> {
-            commentModel.setUser_image(userAccount.getImg_profile());
-            commentModel.setUser_id(userAccount.getId());
-            commentModel.setUser_name(userAccount.getName());
-            commentModel.setPost_id(posts.getPostId());
+        readDataUser(new MyCallbackUser() {
+            @Override
+            public void onCallback(DocumentSnapshot documentSnapshot) {
+                UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
+                commentModel.setUser_image(userAccount.getImg_profile());
+                commentModel.setUser_id(userAccount.getId());
+                commentModel.setUser_name(userAccount.getName());
+                commentModel.setPost_id(posts.getPostId());
+            }
         });
-
 
         MainCommentBinding.fabImage.setOnClickListener(view -> {
 
@@ -212,6 +239,7 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                 startActivityForResult(intent, Gallary_REQUEST_CODE);
             }
         });
+
         MainCommentBinding.fabCamera.setOnClickListener(view -> {
 
             if (requestPermissions.permissionGallery()) {
@@ -227,11 +255,10 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
         });
 
         MainCommentBinding.imageSend.setOnClickListener(view -> {
-
             mProgress.setMessage("Uploading..");
+            mProgress.setCancelable(false);
             mProgress.show();
             if (bitmap != null) {
-
                 byte[] bytesOutImg;
                 commentModel.setComment(MainCommentBinding.editMessage.getText().toString());
                 commentModel.setDate(getDateTime());
@@ -242,7 +269,6 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                 MainCommentBinding.editMessage.setText("");
                 bitmap = null;
                 Log.e("image : ", "EROR");
-
             } else {
                 Log.e("bitmap : ", bitmap + "");
                 commentModel.setComment_image(null);
@@ -252,56 +278,132 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                 MainCommentBinding.editMessage.setText("");
             }
 
-
-
             FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(posts.getTokneId(),
                     mAuth.getCurrentUser().getUid(),
                     "Comment",
                     commentModel.getUser_name() + " commented on your post",
                     getApplicationContext(),
                     WriteCommentActivity.this,
-                    commentModel.getUser_image() ,
+                    commentModel.getUser_image(),
                     posts.getPostId());
             fcmNotificationsSender.SendNotifications();
-
 
             check_img = false;
             InputMethodManager imm = (InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE);
             imm.hideSoftInputFromWindow(MainCommentBinding.editMessage.getWindowToken(), 0);
 
-
-            posts.setCommentNum(posts.getCommentNum()+1);
+            posts.setCommentNum(posts.getCommentNum() + 1);
 
             db.collection("posts").document(posts.getPostId())
                     .set(posts).addOnCompleteListener(new OnCompleteListener<Void>() {
                 @Override
                 public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()){
-                        Toast.makeText(getApplicationContext(), "ok  set", Toast.LENGTH_SHORT).show();
-                    }else {
-                        Toast.makeText(getApplicationContext(), "error  set", Toast.LENGTH_SHORT).show();
+                    if (task.isSuccessful()) {
+                        mProgress.dismiss();
+                        //      Toast.makeText(getApplicationContext(), "ok  set", Toast.LENGTH_SHORT).show();
+                    } else {
+                        //     Toast.makeText(getApplicationContext(), "error  set", Toast.LENGTH_SHORT).show();
                     }
-
                 }
             });
         });
+    }
 
-
+    @Override
+    protected void onStart() {
+        super.onStart();
         if (posts != null) {
-            db.collection("posts").document(posts.getPostId())
-                    .collection("comments").orderBy("date", Query.Direction.DESCENDING)
-                    .addSnapshotListener((value, error) -> {
-                        commentModels.clear();
-                        assert value != null;
-                        for (DocumentSnapshot document : value.getDocuments()) {
-                            CommentModel commentModel = document.toObject(CommentModel.class);
-                            commentModels.add(commentModel);
-                        }
+            readDataCommentsListener(new MyCallBackListenerComments() {
+                @Override
+                public void onCallBack(QuerySnapshot value) {
+                    commentModels.clear();
+                    for (DocumentSnapshot document : value.getDocuments()) {
+                        CommentModel commentModel = document.toObject(CommentModel.class);
+                        commentModels.add(commentModel);
+                    }
+                    mProgress.dismiss();
+                    writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this,
+                            commentModels, WriteCommentActivity.this, getSupportFragmentManager());
+                    MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
+                }
+            });
+        }
+    }
 
-                        writeCommentAdapter = new WriteCommentAdapter(WriteCommentActivity.this,
-                                commentModels, WriteCommentActivity.this,getSupportFragmentManager());
-                        MainCommentBinding.recycleComments.setAdapter(writeCommentAdapter);
+    public void readData(MyCallBackWriteComment myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("posts").document(postID)
+                .get().addOnCompleteListener(new OnCompleteListener<DocumentSnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<DocumentSnapshot> task) {
+                if (task.isSuccessful()) {
+                    posts = task.getResult().toObject(Posts.class);
+                    db.collection("posts").document(posts.getPostId())
+                            .collection("comments").orderBy("date", Query.Direction.DESCENDING)
+                            .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                        @Override
+                        public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                            if (task.isSuccessful()) {
+                                myCallback.onCallback(task);
+                                Log.e("task : ", " tast");
+                            }
+                        }
                     });
+                } else {
+                    Log.e("noti error", task.getException().getMessage());
+                }
+            }
+        });
+    }
+
+    public void readDataComments(MyCallBackWriteComment myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("posts").document(posts.getPostId())
+                .collection("comments").orderBy("date", Query.Direction.DESCENDING)
+                .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                if (task.isSuccessful()) {
+                    myCallback.onCallback(task);
+                    Log.e("task : ", " tast");
+                } else {
+                    Log.e("noti error", task.getException().getMessage());
+                }
+            }
+        });
+    }
+
+    public void readDataCommentsListener(MyCallBackListenerComments myCallback) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
+        db.collection("posts").document(posts.getPostId())
+                .collection("comments").orderBy("date", Query.Direction.DESCENDING)
+                .addSnapshotListener(new EventListener<QuerySnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+                        myCallback.onCallBack(value);
+                    }
+                });
+    }
+
+    public void readDataUser(MyCallbackUser myCallback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            mProgress.setMessage("Loading..");
+            mProgress.setCancelable(false);
+            mProgress.show();
+            FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            });
         }
     }
 
@@ -343,7 +445,6 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
 
     }
 
-
     private String getDateTime() {
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss a", Locale.US);
         Date date = new Date();
@@ -355,13 +456,11 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
         super.onBackPressed();
 
         Intent intent = new Intent(WriteCommentActivity.this, MainActivity.class);
-        intent.putExtra("openPost","openPost");
+        intent.putExtra("openPost", "openPost");
         startActivity(intent);
         finish();
 
     }
-
-
 
     @Override
     public void onClickComment(CommentModel commentModel) {
@@ -374,27 +473,35 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
 
     @Override
     public void selectedReaction(String reaction, CommentModel commentModel) {
-        ReactionType reactionType = new ReactionType(reaction,mAuth.getCurrentUser().getUid());
-        Log.e("reactionType" , reactionType.getReactionType());  // new
-        Map<String,String> arrayList = posts.getReactions();
-        if(reactionType.getReactionType().equals(posts.getReactions().get(mAuth.getCurrentUser().getUid()))){
+        ReactionType reactionType = new ReactionType(reaction, mAuth.getCurrentUser().getUid());
+        Log.e("reactionType", reactionType.getReactionType());  // new
+        Map<String, String> arrayList = posts.getReactions();
+        if (reactionType.getReactionType().equals(posts.getReactions().get(mAuth.getCurrentUser().getUid()))) {
             arrayList.remove(mAuth.getCurrentUser().getUid());
-        }else{
-            arrayList.put(mAuth.getCurrentUser().getUid(),reactionType.getReactionType());
+        } else {
+            arrayList.put(mAuth.getCurrentUser().getUid(), reactionType.getReactionType());
         }
         commentModel.setReactions(arrayList);
+        readDataReadction(new MyCallBackReaction() {
+            @Override
+            public void onCallBack(Task<Void> task) {
+                if(task.isSuccessful())
+                    mProgress.dismiss();
+            }
+        },commentModel);
+    }
+
+    public void readDataReadction(MyCallBackReaction myCallback,CommentModel commentModel) {
+        mProgress.setMessage("Loading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         db.collection("posts").document(posts.getPostId()).
                 collection("comments").document(commentModel.getComment_id()).set(commentModel)
                 .addOnCompleteListener(new OnCompleteListener<Void>() {
                     @Override
                     public void onComplete(@NonNull Task<Void> task) {
-                        if (task.isSuccessful()){
-                            onResume();
-                            Log.e("equals " , "isSuccessful");
-                            Toast.makeText(WriteCommentActivity.this, "reaction commentModel", Toast.LENGTH_SHORT).show();
-                        }else {
-                            Toast.makeText(WriteCommentActivity.this, "false commentModel ", Toast.LENGTH_SHORT).show();
-                        }
+                            Log.e("equals ", "isSuccessful");
+                            myCallback.onCallBack(task);
                     }
                 });
     }

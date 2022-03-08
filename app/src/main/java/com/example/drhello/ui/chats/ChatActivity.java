@@ -51,7 +51,11 @@ import com.devlomi.record_view.OnRecordClickListener;
 import com.devlomi.record_view.OnRecordListener;
 import com.devlomi.record_view.RecordPermissionHandler;
 import com.example.drhello.StateOfUser;
+import com.example.drhello.adapter.FriendsAdapter;
+import com.example.drhello.firebaseinterface.MyCallBackChats;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
+import com.example.drhello.fragment.ChatFragment;
+import com.example.drhello.model.AddPersonModel;
 import com.example.drhello.model.LastMessages;
 import com.example.drhello.R;
 import com.example.drhello.textclean.RequestPermissions;
@@ -226,6 +230,26 @@ public class ChatActivity extends AppCompatActivity  {
         });
 
 
+        readDataChatsListener(new MyCallBackChats() {
+            @Override
+            public void onCallBack(DocumentSnapshot value) {
+                UserAccount userAccountme = value.toObject(UserAccount.class);
+                Map<String,ChatModel> map = userAccountme.getMap();
+                Log.e("entChatModel: ",map.entrySet()+"");
+
+                for (Map.Entry<String, ChatModel> entry : map.entrySet()) {
+                    Log.e("entry: ",entry.getValue().getMessage());
+                    if(entry.getKey().equals(lastmassage.getSenderid()) ){
+                        Log.e("entry: ",entry.getValue().getMessage());
+                        recycle_message_adapter.addMessage(entry.getValue());
+                        Log.e("chatsArray: ",chatsArrayList.get(0).getMessage());
+                   ///     chatsArrayList.add(0,entry.getValue());
+                        recycle_message_adapter.notifyItemInserted(0);
+                        break;
+                    }
+                }
+            }
+        });
     }
 
     private void init() {
@@ -233,6 +257,8 @@ public class ChatActivity extends AppCompatActivity  {
         mRequestQueue = Volley.newRequestQueue(this);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        recycle_message_adapter = new Recycle_Message_Adapter(chatsArrayList, ChatActivity.this, bitmap);
+        activityChatBinding.rvChatFriend.setAdapter(recycle_message_adapter);
         //  mProgress = new ProgressDialog(this);
 
         //   mRecorder = new MediaRecorder();
@@ -329,7 +355,6 @@ public class ChatActivity extends AppCompatActivity  {
                 activityChatBinding.clEdit.setVisibility(View.VISIBLE);
                 activityChatBinding.imgAttachFile.setVisibility(View.VISIBLE);
 
-
                 stopRecording();
 
                 Log.d("RecordView", "onCancel");
@@ -338,10 +363,9 @@ public class ChatActivity extends AppCompatActivity  {
 
             @Override
             public void onFinish(long recordTime, boolean limitReached) {
-                Toast.makeText(ChatActivity.this, "record:\n"+recorder.toString(), Toast.LENGTH_SHORT).show();
-                uploadAudio(Uri.fromFile(new File(recordFile.getPath())));
+         //       Toast.makeText(ChatActivity.this, "record:\n"+recorder.toString(), Toast.LENGTH_SHORT).show();
                 stopRecording();
-
+                uploadAudio(Uri.fromFile(new File(recordFile.getPath())));
 
 
                 activityChatBinding.imgCamera.setVisibility(View.VISIBLE);
@@ -684,20 +708,40 @@ public class ChatActivity extends AppCompatActivity  {
         getBitmapFromImage();
 
         db.collection("chatsChannel").document(iDChannel).collection("messages").
-                orderBy("date", Query.Direction.DESCENDING).addSnapshotListener(new EventListener<QuerySnapshot>() {
+                orderBy("date", Query.Direction.DESCENDING).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
             @Override
-            public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
                 chatsArrayList.clear();
-                for (DocumentSnapshot document : value.getDocuments())
+                for (DocumentSnapshot document : task.getResult().getDocuments())
                     if (document.exists()) {
                         ChatModel chatModel = document.toObject(ChatModel.class);
                         Log.e("all : ", chatModel.getDate());
                         chatsArrayList.add(chatModel);
-                        recycle_message_adapter = new Recycle_Message_Adapter(chatsArrayList, ChatActivity.this, bitmap);
-                        activityChatBinding.rvChatFriend.setAdapter(recycle_message_adapter);
                     }
+                recycle_message_adapter.updateMessage(chatsArrayList);
+
             }
         });
+    }
+
+    @Override
+    protected void onStart() {
+        super.onStart();
+
+
+    }
+
+    public void readDataChatsListener(MyCallBackChats myCallback) {
+        db.collection("users").document(mAuth.getCurrentUser().getUid())
+                .addSnapshotListener(new EventListener<DocumentSnapshot>() {
+                    @Override
+                    public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
+                        Log.e("task : ", " tast");
+                        if (mAuth.getCurrentUser() != null) {
+                            myCallback.onCallBack(value);
+                        }
+                    }
+                });
     }
 
     private void getBitmapFromImage() {
@@ -929,9 +973,11 @@ public class ChatActivity extends AppCompatActivity  {
 
 
     public void stopRecording(){
-        if (recordFile!=null){
+       /* if (recordFile!=null){
             recordFile.delete();
         }
+
+        */
         try {
             recorder.stop();
             recorder.release();

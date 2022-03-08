@@ -56,8 +56,10 @@ public class NumReactionAdapter extends RecyclerView.Adapter<NumReactionAdapter.
         ReactionModel reactionModel = reactionModels.get(position);
         holder.name_user.setText(reactionModel.getName_user());
         // holder.reaction.setImageResource(reactionModel.getReaction());
-
-        if (userAccountme.getId().equals(userAccountArrayList.get(position).getId())) {
+        if (userAccountme.getFriendsmap().containsKey(userAccountArrayList.get(position).getId())) {
+            holder.btn_add.setVisibility(View.GONE);
+            holder.btn_cancel.setVisibility(View.GONE);
+        }else if (userAccountme.getId().equals(userAccountArrayList.get(position).getId())) {
             holder.btn_add.setVisibility(View.GONE);
             holder.btn_cancel.setVisibility(View.GONE);
         } else if (userAccountme.getRequestSsent().containsKey(userAccountArrayList.get(position).getId())) {
@@ -67,6 +69,7 @@ public class NumReactionAdapter extends RecyclerView.Adapter<NumReactionAdapter.
             holder.btn_cancel.setVisibility(View.GONE);
             holder.btn_add.setVisibility(View.VISIBLE);
         }
+
 
         try {
             Glide.with(context).load(reactionModel.getImg_user()).placeholder(R.drawable.ic_chat).

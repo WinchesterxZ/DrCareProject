@@ -28,6 +28,8 @@ import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.bumptech.glide.Glide;
 import com.example.drhello.StateOfUser;
+import com.example.drhello.firebaseinterface.MyCallbackSignIn;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.textclean.PreprocessingStrings;
 import com.example.drhello.textclean.RequestPermissions;
@@ -43,8 +45,11 @@ import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
+import com.google.firebase.firestore.QueryDocumentSnapshot;
+import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.ml.modeldownloader.CustomModel;
 import com.google.firebase.ml.modeldownloader.CustomModelDownloadConditions;
@@ -115,82 +120,40 @@ public class WritePostsActivity extends AppCompatActivity {
             }
         });
 
-        UserViewModel userViewModel;
-        userViewModel = ViewModelProviders.of(WritePostsActivity.this).get(UserViewModel.class);
-        userViewModel.getUser(mAuth,db);
-        userViewModel.UserMutableLiveData.observe(WritePostsActivity.this, userAccount -> {
-            posts.setNameUser(userAccount.getName());
-            posts.setImageUser(userAccount.getImg_profile());
-            posts.setDate(getDateTime());
-            posts.setTokneId(userAccount.getTokenID());
-            Log.e("posts.UserMu ",posts.getImageUser());
+        readData(new MyCallbackUser() {
+            @Override
+            public void onCallback(DocumentSnapshot documentSnapshot) {
+                if(!documentSnapshot.exists()){
+                    FirebaseAuth.getInstance().getCurrentUser().delete();
+                }else{
+                    UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
+                        posts.setNameUser(userAccount.getName());
+                        posts.setImageUser(userAccount.getImg_profile());
+                        posts.setDate(getDateTime());
+                        posts.setTokneId(userAccount.getTokenID());
+                        Log.e("posts.UserMu ",posts.getImageUser());
 
-            activityWritePostsBinding.userAddress.setText(userAccount.getUserInformation().getCity());
-            activityWritePostsBinding.userName.setText(userAccount.getName());
-            try{
-                Glide.with(WritePostsActivity.this).load(userAccount.getImg_profile()).
-                        placeholder(R.drawable.user).
-                        error(R.drawable.user).into(activityWritePostsBinding.imageUser);
-            }catch (Exception e){
-                activityWritePostsBinding.imageUser.setImageResource(R.drawable.user);
+                        activityWritePostsBinding.userAddress.setText(userAccount.getUserInformation().getCity());
+                        activityWritePostsBinding.userName.setText(userAccount.getName());
+                        try{
+                            Glide.with(WritePostsActivity.this).load(userAccount.getImg_profile()).
+                                    placeholder(R.drawable.user).
+                                    error(R.drawable.user).into(activityWritePostsBinding.imageUser);
+                        }catch (Exception e){
+                            activityWritePostsBinding.imageUser.setImageResource(R.drawable.user);
+                        }
+                }
+                mProgress.dismiss();
             }
-
         });
 
-
-
     //to upload post
-
         activityWritePostsBinding.imgPost.setOnClickListener(v -> {
             mProgress.setMessage("Uploading..");
             mProgress.show();
+            mProgress.setCancelable(false);
             String post=activityWritePostsBinding.editPost.getText().toString().trim();
-/*
-      PreprocessingStrings preprocessingStrings = new PreprocessingStrings(WritePostsActivity.this);
-            float[] pad = preprocessingStrings.loadModel(preprocessingStrings.tokensAndStemming(preprocessingStrings.preprocessingEN(post)),
-                    "word_dict.json");
-
-
- */
-      /*      CustomModelDownloadConditions conditions = new CustomModelDownloadConditions.Builder()
-                    .requireWifi()
-                    .build();
-            FirebaseModelDownloader.getInstance()
-                    .getModel("hate_abusiveModel", DownloadType.LOCAL_MODEL, conditions)
-                    .addOnSuccessListener(new OnSuccessListener<CustomModel>() {
-                        @Override
-                        public void onSuccess(CustomModel model) {
-                            // Download complete. Depending on your app, you could enable
-                            // the ML feature, or switch from the local model to the remote
-                            // model, etc.
-                            float[][] s = new float[][]{{0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 5534, 1260, 22}};
-                          //  float[][] s = new float[][]{pad};
-                            File modelFile = model.getFile();
-
-                            if (modelFile != null) {
-                                Interpreter interpreter = new Interpreter(modelFile);
-                                int bufferSize = 1000 * Float.SIZE / Byte.SIZE;
-                                ByteBuffer modelOutput = ByteBuffer.allocateDirect(bufferSize).order(ByteOrder.nativeOrder());
-
-                                interpreter.run(s, modelOutput);
-
-                                modelOutput.rewind();
-                                FloatBuffer probabilities = modelOutput.asFloatBuffer();
-
-                                float probability = probabilities.get(0);
-                           //     if(probability > 0.5){
-                                    Toast.makeText(getApplicationContext(),"REFUSE THIS TEXT",Toast.LENGTH_SHORT).show();
-                                    Log.e("REFUSE THIS TEXT" ,probability+" ");
-                                    mProgress.dismiss();
-                            //    }else{
-
-                                }
-                      //      }
-                        }
-                    });
-*/
             Log.e("posts.getnameuser ",posts.getImageUser());
-
             posts.setReactions(new HashMap<>());
             posts.setWritePost(post);
             posts.setUserId(mAuth.getUid());
@@ -208,33 +171,12 @@ public class WritePostsActivity extends AppCompatActivity {
                             WritePostsActivity.this,
                             posts.getImageUser());
                     fcmNotificationsSender.SendNotifications();
-
                     mProgress.dismiss();
-                    // finish();
                     Intent intent = new Intent(WritePostsActivity.this, MainActivity.class);
                     intent.putExtra("postsView","postsView");
                     startActivity(intent);
-
                 }
             });
-
-
-            /*
-            if(post.matches("[a-zA-Z]+")){
-                PreprocessingStrings preprocessingStrings = new PreprocessingStrings(WritePostsActivity.this);
-                preprocessingStrings.loadModel("Hate_AbusiveEN", preprocessingStrings.tokensAndStemming(preprocessingStrings.preprocessingEN(post)),"word_dict.json");
-                Log.e("loadModel " ,"Hate_AbusiveEN");
-
-            }else{
-                PreprocessingStrings preprocessingStrings = new PreprocessingStrings(WritePostsActivity.this);
-                preprocessingStrings.loadModel("ArabivHate_abusive", preprocessingStrings.tokensAndStemming(preprocessingStrings.preprocessingEN(post)),"word_dictAR.json");
-                Log.e("loadModel " ,"ArabivHate_abusive");
-
-            }
-             */
-
-
-
         });
 
         activityWritePostsBinding.addImage.setOnClickListener(v -> {
@@ -249,14 +191,27 @@ public class WritePostsActivity extends AppCompatActivity {
         });
     }
 
+    public void readData(MyCallbackUser myCallback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            mProgress.setMessage("Loading..");
+            mProgress.setCancelable(false);
+            mProgress.show();
+            FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            });
+        }
+    }
 
     private String getDateTime() {
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss a", Locale.US);
         Date date = new Date();
         return dateFormat.format(date);
     }
-
-
 
     private void inti() {
         mProgress = new ProgressDialog(this);
@@ -348,7 +303,6 @@ public class WritePostsActivity extends AppCompatActivity {
 
         }
     }
-
 
     @Override
     protected void onResume() {

@@ -348,6 +348,7 @@ public class CompleteInfoActivity extends AppCompatActivity {
                     }
                 });
     }
+
     private boolean isValidPhoneNumber(String phone) {
 
         if (!phone.trim().equals("") && (phone.length() > 6 && phone.length() <= 13)

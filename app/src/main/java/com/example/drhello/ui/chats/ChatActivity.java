@@ -7,14 +7,15 @@ import androidx.core.app.ActivityCompat;
 import androidx.core.content.ContextCompat;
 import androidx.databinding.DataBindingUtil;
 import androidx.loader.content.CursorLoader;
-
 import android.Manifest;
 import android.annotation.SuppressLint;
 import android.app.Activity;
 import android.app.AlertDialog;
+import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.IntentSender;
 import android.content.pm.PackageManager;
 import android.database.Cursor;
@@ -27,6 +28,7 @@ import android.graphics.drawable.Drawable;
 import android.location.Location;
 import android.location.LocationManager;
 import android.media.MediaRecorder;
+import android.net.ConnectivityManager;
 import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
@@ -44,8 +46,6 @@ import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.Toast;
 
-import com.android.volley.RequestQueue;
-import com.android.volley.toolbox.Volley;
 import com.bumptech.glide.Glide;
 import com.bumptech.glide.request.target.CustomTarget;
 import com.bumptech.glide.request.transition.Transition;
@@ -55,12 +55,13 @@ import com.devlomi.record_view.OnRecordListener;
 import com.devlomi.record_view.RecordPermissionHandler;
 import com.example.drhello.LastChat;
 import com.example.drhello.StateOfUser;
-import com.example.drhello.adapter.FriendsAdapter;
+import com.example.drhello.connectionnewtwork.NetworkChangeListener;
+import com.example.drhello.firebaseinterface.MyCallBackChannel;
 import com.example.drhello.firebaseinterface.MyCallBackChats;
 import com.example.drhello.firebaseinterface.MyCallBackFriend;
+import com.example.drhello.firebaseinterface.MyCallBackMessage;
+import com.example.drhello.firebaseinterface.MyCallbackUser;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
-import com.example.drhello.fragment.ChatFragment;
-import com.example.drhello.model.AddPersonModel;
 import com.example.drhello.model.LastMessages;
 import com.example.drhello.R;
 import com.example.drhello.textclean.RequestPermissions;
@@ -70,7 +71,6 @@ import com.example.drhello.model.ChatChannel;
 import com.example.drhello.model.ChatModel;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.ui.main.MainActivity;
-import com.example.drhello.ui.mapping.MapsActivity;
 import com.google.android.gms.common.ConnectionResult;
 import com.google.android.gms.common.api.GoogleApiClient;
 import com.google.android.gms.common.api.PendingResult;
@@ -86,6 +86,7 @@ import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
+import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentReference;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
@@ -97,8 +98,6 @@ import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
 import com.google.firebase.storage.UploadTask;
-import com.tougee.recorderview.AudioRecordView;
-
 import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.IOException;
@@ -106,52 +105,38 @@ import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
-
-import static androidx.core.content.PermissionChecker.PERMISSION_GRANTED;
 
 public class ChatActivity extends AppCompatActivity  implements com.google.android.gms.location.LocationListener,
         GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener{
-    private static final int Gallary_REQUEST_CODE = 1, SONGS_REQUEST_CODE = 2, PERMISSION_ALL = 4000, PERMISSION_ALL_STORAGE = 5000;
+    private static final int Gallary_REQUEST_CODE = 1, SONGS_REQUEST_CODE = 2, PERMISSION_ALL_STORAGE = 5000;
     private static final int CAMERA_REQUEST_CODE = 1888;
     private static final int MY_CAMERA_PERMISSION_CODE = 100;
-    private static final int Location_REQUEST_CODE = 2000;
     private final int REQUESTPERMISSIONSFINE_LOCATION = 1001;
     private final int REQUESTPERMISSIONSLOCATION = 10;
-    final int MY_Record_PERMISSION_CODE = 0;
     private FirebaseAuth mAuth;
     private Location mLocation;
     private FirebaseFirestore db;
-    //public static ProgressDialog mProgress;
+    public static ProgressDialog mProgress;
     private ActivityChatBinding activityChatBinding;
-    private boolean flag_check_message = false, flagFirstTime = true;
-    private String geoUri = "", iDChannel = "", mFileName;
+    private String geoUri = "", iDChannel = "";
     private ArrayList<ChatModel> chatsArrayList = new ArrayList<>();
     private String idFriend;
     private UserAccount userAccountme, friendAccount;
     private GoogleApiClient mGoogleApiClient;
     private LocationRequest mLocationRequest;
-
-    // private  MediaRecorder mRecorder;
-    private static final String AUDIO_RECORDER_FILE_EXT_3GP = ".3gp";
-    private static final String AUDIO_RECORDER_FILE_EXT_MP4 = ".mp4";
     private static final String AUDIO_RECORDER_FOLDER = "AudioRecorder";
     public static MediaRecorder recorder = null;
     private File recordFile;
     private int currentFormat = 0;
     private int output_formats[] = { MediaRecorder.OutputFormat.MPEG_4,MediaRecorder.OutputFormat.THREE_GPP };
-    private String file_exts[] = { AUDIO_RECORDER_FILE_EXT_MP4, AUDIO_RECORDER_FILE_EXT_3GP };
-    private static final String PHOTOS_FOLDER = "Photos";
-    //RecordAudio recordAudio;
-    private RequestQueue mRequestQueue;
     private Recycle_Message_Adapter recycle_message_adapter;
     private Bitmap bitmap;
     private RequestPermissions requestPermissions;
     private double Lat = 0.0 ,Lon = 0.0;
+    NetworkChangeListener networkChangeListener = new NetworkChangeListener();
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -162,7 +147,7 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         } else {
             getWindow().setStatusBarColor(Color.WHITE);
         }
-
+        mProgress = new ProgressDialog(this);
         requestPermissions = new RequestPermissions(ChatActivity.this, ChatActivity.this);
         checkRunTimePermission();
         init();
@@ -175,14 +160,9 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             @Override
             public void onTextChanged(CharSequence charSequence, int i, int i1, int i2) {
                 if (charSequence.toString().trim().length() > 0) {
-                    flag_check_message = true;
-
                     activityChatBinding.imageviewSend.setVisibility(View.VISIBLE);
-                    //      activityChatBinding.imageRecord.setImageResource(R.drawable.ic_send);
                 } else {
-                    flag_check_message = false;
                     activityChatBinding.imageviewSend.setVisibility(View.GONE);
-                    //    activityChatBinding.imageRecord.setImageResource(R.drawable.ic_mic);
                 }
             }
 
@@ -249,19 +229,15 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             }
         });
 
-
-
     }
 
     private void init() {
         activityChatBinding = DataBindingUtil.setContentView(this, R.layout.activity_chat);
         getBitmapFromImage();
-        mRequestQueue = Volley.newRequestQueue(this);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
         recycle_message_adapter = new Recycle_Message_Adapter(chatsArrayList, ChatActivity.this, bitmap);
         activityChatBinding.rvChatFriend.setAdapter(recycle_message_adapter);
-
         idFriend = (String) getIntent().getSerializableExtra("friendAccount");
 
         String friendIdIntent = getIntent().getStringExtra("chatchannel");
@@ -269,16 +245,10 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         if (friendIdIntent != null) {
             id_massage = friendIdIntent;
 
-            db.collection("users").whereEqualTo("id", mAuth.getCurrentUser().getUid())
-                    .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            readDataUser(new MyCallbackUser() {
                 @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful()) {
-                        Log.e("task : ", " tast");
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            userAccountme = document.toObject(UserAccount.class);
-                        }
-                    }
+                public void onCallback(DocumentSnapshot documentSnapshot) {
+                    userAccountme = documentSnapshot.toObject(UserAccount.class);
                 }
             });
 
@@ -294,7 +264,55 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                     Log.e("task : ", " tast");
                     for (QueryDocumentSnapshot document : task.getResult()) {
                         friendAccount = document.toObject(UserAccount.class);
-                        createChannelOnFirebase(friendAccount.getId());
+
+                        readDataChannelListener(new MyCallBackChannel() {
+                            @Override
+                            public void onCallback(DocumentSnapshot documentSnapshot) {
+                                if (documentSnapshot.exists()) {
+                                    String id_channel = Objects.requireNonNull(documentSnapshot.get("id")).toString();
+                                    iDChannel = id_channel;
+                                } else {
+                                    DocumentReference idChannel = FirebaseFirestore.getInstance().collection("users").document();
+                                    ChatChannel chatChannel = new ChatChannel(idChannel.getId());
+
+                                    db.collection("users").
+                                            document(mAuth.getCurrentUser().getUid()).
+                                            collection("channels")
+                                            .document(friendAccount.getId()).set(chatChannel);
+
+                                    db.collection("users").
+                                            document(friendAccount.getId()).
+                                            collection("channels")
+                                            .document(mAuth.getCurrentUser().getUid()).set(chatChannel);
+
+                                    iDChannel = idChannel.getId();
+                                }
+
+                                ChatModel chatModel = (ChatModel) getIntent().getSerializableExtra("message");
+                                if (chatModel != null) {
+                                    Log.e("chatActivity:", chatModel.getMessage());
+                                    chatModel.setDate(getDateTime());
+                                    chatModel.setSenderid(mAuth.getCurrentUser().getUid());
+                                    chatModel.setRecieveid(friendAccount.getId());
+                                    chatModel.setNameSender(userAccountme.getName());
+                                    storeMessageOnFirebase(chatModel);
+                                }
+
+                                readDataMessagesListener(new MyCallBackMessage() {
+                                    @Override
+                                    public void onCallback(Task<QuerySnapshot> task) {
+                                        for (DocumentSnapshot document : task.getResult().getDocuments())
+                                            if (document.exists()) {
+                                                ChatModel chatModel = document.toObject(ChatModel.class);
+                                                Log.e("all : ", chatModel.getDate());
+                                                chatsArrayList.add(chatModel);
+                                            }
+                                        recycle_message_adapter.updateMessage(chatsArrayList);
+                                    }
+                                },iDChannel);
+                            }
+                        },friendAccount.getId());
+
                         retriveDate();
 
                         readDataChatsListener(new MyCallBackChats() {
@@ -319,22 +337,29 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                                 }
 
                             }
-                        });
-
+                        },friendAccount.getId());
                     }
                 }
             }
         },id_massage);
+    }
 
-
-
+    public void readDataUser(MyCallbackUser myCallback) {
+        FirebaseUser currentUser = FirebaseAuth.getInstance().getCurrentUser();
+        if (currentUser != null) {
+            FirebaseFirestore.getInstance().collection("users")
+                    .document(currentUser.getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+                @Override
+                public void onSuccess(DocumentSnapshot documentSnapshot) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            });
+        }
     }
 
     private void playRecordVoice(){
 
-
         //IMPORTANT
-
         activityChatBinding.recordButton.setRecordView(activityChatBinding.recordView);
 
         //ListenForRecord must be false ,otherwise onClick will not be called
@@ -348,18 +373,13 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         //Cancel Bounds is when the Slide To Cancel text gets before the timer . default is 8
         activityChatBinding.recordView.setCancelBounds(8);
 
-
         activityChatBinding.recordView.setSmallMicColor(Color.parseColor("#c2185b"));
 
-        //prevent recording under one Second
         activityChatBinding.recordView.setLessThanSecondAllowed(false);
-
 
         activityChatBinding.recordView.setSlideToCancelText("Slide To Cancel");
 
-
         activityChatBinding.recordView.setCustomSounds(R.raw.record_start, R.raw.record_finished, 0);
-
 
         activityChatBinding.recordView.setOnRecordListener(new OnRecordListener() {
             @Override
@@ -368,10 +388,7 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                 activityChatBinding.clEdit.setVisibility(View.GONE);
                 activityChatBinding.imgAttachFile.setVisibility(View.GONE);
                 recordFile = new File(getFilename());
-                startRecording(recordFile.getPath());
-
-
-                Log.d("RecordView", "onStart");
+                startRecording();
             }
 
             @Override
@@ -379,34 +396,25 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                 activityChatBinding.imgCamera.setVisibility(View.VISIBLE);
                 activityChatBinding.clEdit.setVisibility(View.VISIBLE);
                 activityChatBinding.imgAttachFile.setVisibility(View.VISIBLE);
-
                 stopRecording();
-
                 Log.d("RecordView", "onCancel");
-
             }
 
             @Override
             public void onFinish(long recordTime, boolean limitReached) {
-         //       Toast.makeText(ChatActivity.this, "record:\n"+recorder.toString(), Toast.LENGTH_SHORT).show();
                 stopRecording();
                 uploadAudio(Uri.fromFile(new File(recordFile.getPath())));
-
-
                 activityChatBinding.imgCamera.setVisibility(View.VISIBLE);
                 activityChatBinding.clEdit.setVisibility(View.VISIBLE);
                 activityChatBinding.imgAttachFile.setVisibility(View.VISIBLE);
-
             }
 
             @Override
             public void onLessThanSecond() {
-
                 activityChatBinding.imgCamera.setVisibility(View.VISIBLE);
                 activityChatBinding.clEdit.setVisibility(View.VISIBLE);
                 activityChatBinding.imgAttachFile.setVisibility(View.VISIBLE);
                 stopRecording();
-
 
                 Toast.makeText(ChatActivity.this, "OnLessThanSecond", Toast.LENGTH_SHORT).show();
                 Log.d("RecordView", "onLessThanSecond");
@@ -427,13 +435,15 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                     return true;
                 }
 
-
-                if (ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED) {
-                    ActivityCompat.requestPermissions(ChatActivity.this,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}, PERMISSION_ALL_STORAGE);
-
+                if (ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.WRITE_EXTERNAL_STORAGE)
+                        != PackageManager.PERMISSION_GRANTED) {
+                    ActivityCompat.requestPermissions(ChatActivity.this,new String[]{Manifest.permission.WRITE_EXTERNAL_STORAGE}
+                            , PERMISSION_ALL_STORAGE);
                 } else {
-                    if ( ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.RECORD_AUDIO)!= PackageManager.PERMISSION_GRANTED) {
-                        ActivityCompat.requestPermissions(ChatActivity.this, new String[]{Manifest.permission.RECORD_AUDIO}, PERMISSION_ALL_STORAGE);
+                    if ( ContextCompat.checkSelfPermission(ChatActivity.this, Manifest.permission.RECORD_AUDIO)!=
+                            PackageManager.PERMISSION_GRANTED) {
+                        ActivityCompat.requestPermissions(ChatActivity.this, new String[]{Manifest.permission.RECORD_AUDIO},
+                                PERMISSION_ALL_STORAGE);
                     } else {
                         Log.e("recordAudio: ", "FIRST");
                         return true;
@@ -454,7 +464,6 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                     activityChatBinding.profileImageChat.setImageBitmap(resource);
                     //     Log.e(" bitmap.toString : ",  resource+"");
                 }
-
                 @Override
                 public void onLoadCleared(@Nullable Drawable placeholder) {
                 }
@@ -658,84 +667,10 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             }
         }
 
-
-
     private String getDateTime() {
         DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss:SS a", Locale.US);
         Date date = new Date();
         return dateFormat.format(date);
-    }
-
-    private String[] splitDateTime(String dateFormat) {
-        return dateFormat.split(" ");
-    }
-
-    private void createChannelOnFirebase(String id_friend) {
-
-        db.collection("users").
-                document(id_friend).
-                collection("channels")
-                .document(mAuth.getCurrentUser().getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
-            @Override
-            public void onSuccess(DocumentSnapshot documentSnapshot) {
-                if (documentSnapshot.exists()) {
-
-                    String id_channel = Objects.requireNonNull(documentSnapshot.get("id")).toString();
-                    Log.e("id", id_channel);
-
-                    iDChannel = id_channel;
-                } else {
-
-                    DocumentReference idChannel = FirebaseFirestore.getInstance().collection("users").document();
-                    ChatChannel chatChannel = new ChatChannel(idChannel.getId());
-
-
-                    db.collection("users").
-                            document(mAuth.getCurrentUser().getUid()).
-                            collection("channels")
-                            .document(id_friend).set(chatChannel);
-
-                    db.collection("users").
-                            document(id_friend).
-                            collection("channels")
-                            .document(mAuth.getCurrentUser().getUid()).set(chatChannel);
-
-                    iDChannel = idChannel.getId();
-                }
-                ChatModel chatModel = (ChatModel) getIntent().getSerializableExtra("message");
-                if (chatModel != null) {
-                    Log.e("chatActivity:", chatModel.getMessage());
-                    // if(!iDChannel.equals("")){
-                    Log.e("iDChannel:", chatModel.getMessage());
-                    chatModel.setDate(getDateTime());
-                    chatModel.setSenderid(mAuth.getCurrentUser().getUid());
-                    chatModel.setRecieveid(friendAccount.getId());
-                    chatModel.setNameSender(userAccountme.getName());
-                    storeMessageOnFirebase(chatModel);
-
-                    //}
-                }
-                getMessages(iDChannel);
-            }
-        });
-    }
-
-    private void getMessages(String iDChannel) {
-        db.collection("chatsChannel").document(iDChannel).collection("messages").
-                orderBy("date", Query.Direction.DESCENDING).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-            @Override
-            public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                chatsArrayList.clear();
-                for (DocumentSnapshot document : task.getResult().getDocuments())
-                    if (document.exists()) {
-                        ChatModel chatModel = document.toObject(ChatModel.class);
-                        Log.e("all : ", chatModel.getDate());
-                        chatsArrayList.add(chatModel);
-                    }
-                recycle_message_adapter.updateMessage(chatsArrayList);
-
-            }
-        });
     }
 
     public void readDataFriendAccount(MyCallBackFriend myCallback,String idmassage) {
@@ -750,9 +685,9 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         });
     }
 
-    public void readDataChatsListener(MyCallBackChats myCallback) {
+    public void readDataChatsListener(MyCallBackChats myCallback,String idFriend) {
         db.collection("users").document(mAuth.getCurrentUser().getUid())
-                .collection("lastmessage").document(friendAccount.getId())
+                .collection("lastmessage").document(idFriend)
                 .addSnapshotListener(new EventListener<DocumentSnapshot>() {
                     @Override
                     public void onEvent(@Nullable DocumentSnapshot value, @Nullable FirebaseFirestoreException error) {
@@ -762,6 +697,38 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                         }
                     }
                 });
+    }
+
+    public void readDataMessagesListener(MyCallBackMessage myCallback,String iDChannel) {
+        db.collection("chatsChannel").document(iDChannel).collection("messages").
+                orderBy("date", Query.Direction.DESCENDING).get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+            @Override
+            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                chatsArrayList.clear();
+                Log.e("task : ", " tast");
+                if (mAuth.getCurrentUser() != null) {
+                    myCallback.onCallback(task);
+                }
+            }
+        });
+
+    }
+
+    public void readDataChannelListener(MyCallBackChannel myCallback,String id_friend) {
+        db.collection("users").
+                document(id_friend).
+                collection("channels")
+                .document(mAuth.getCurrentUser().getUid()).get().addOnSuccessListener(new OnSuccessListener<DocumentSnapshot>() {
+            @Override
+            public void onSuccess(DocumentSnapshot documentSnapshot) {
+                chatsArrayList.clear();
+                Log.e("task : ", " tast");
+                if (mAuth.getCurrentUser() != null) {
+                    myCallback.onCallback(documentSnapshot);
+                }
+            }
+        });
+
     }
 
     private void getBitmapFromImage() {
@@ -803,6 +770,15 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         LastChat lastChat = new LastChat(friendAccount.getId(),friendAccount.getImg_profile(),
                 chatModel.getDate(),chatModel.getMessage(),chatModel.getNameSender());
 
+        if(chatModel.getMessage().equals("") && chatModel.getRecord().equals("")){ // image
+            lastChat.setMessage("image Message");
+        }else if(chatModel.getMessage().equals("") && chatModel.getImage().equals("")){ // record
+            lastChat.setMessage("record Message");
+        } else{
+            lastChat.setMessage(chatModel.getMessage());
+        }
+
+
         Map<String,LastChat> map = friendAccount.getMap();
         map.put(userAccountme.getId(),lastChat);
         friendAccount.setMap(map);
@@ -816,16 +792,14 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                 .set(userAccountme);
 
         db.collection("users").
-                document(friendAccount.getId())
-                .set(friendAccount);
-
-
-        //   mProgress.dismiss();
+                document(friendAccount.getId()).set(friendAccount);
 
     }
 
-
     private void uploadImage(Bitmap bitmap) {
+        mProgress.setMessage("Uploading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         ByteArrayOutputStream output_image = new ByteArrayOutputStream();
         bitmap.compress(Bitmap.CompressFormat.JPEG, 100, output_image);
         byte[] data_image = output_image.toByteArray();
@@ -842,11 +816,10 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                                 userAccountme.getName(), "");
                         storeMessageOnFirebase(chatModel);
                         sendNotification("Send an Image");
-                        // Toast.makeText(getBaseContext(), "Uploaded Successfully", Toast.LENGTH_SHORT).show();
+                        mProgress.dismiss();
                     }
                 });
                 Log.e("uri ", "Successful Upload");
-                //Toast.makeText(getApplicationContext(),"Successful Upload ",Toast.LENGTH_SHORT).show();
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -869,16 +842,13 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(getBaseContext().getContentResolver(), data.getData());
                 uploadImage(bitmap);
-                //     Toast.makeText(getBaseContext(), "Successful", Toast.LENGTH_SHORT).show();
             } catch (IOException e) {
                 Log.e("gallary exception: ", e.getMessage());
             }
         } else if (requestCode == SONGS_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
-            //    progress.setVisibility(View.VISIBLE);
             Uri uri = data.getData();
             Log.e("uri : ", uri + "");
             uploadAudio(Uri.fromFile(new File(getRealPathFromURI(uri))));
-
         } else if (resultCode == Activity.RESULT_CANCELED) {
             // Toast.makeText(getBaseContext(), "Canceled", Toast.LENGTH_SHORT).show();
         }
@@ -894,15 +864,12 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         return cursor.getString(column_index);
     }
 
-
     public void uploadAudio(Uri uri) {
-        //mProgress.setMessage("Uploading Audio ...");
-        //mProgress.show();
-//        UUID audioName=UUID.randomUUID();
+        mProgress.setMessage("Uploading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         StorageReference storageReference = FirebaseStorage.getInstance().
                 getReference().child("audios/audiosChat/" + userAccountme.getId());
-
-
         storageReference.putFile(uri).addOnSuccessListener(new OnSuccessListener<UploadTask.TaskSnapshot>() {
             @Override
             public void onSuccess(UploadTask.TaskSnapshot taskSnapshot) {
@@ -915,11 +882,10 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                                 userAccountme.getName(), uri.toString());
                         storeMessageOnFirebase(chatModel);
                         sendNotification("Send an Record");
-                        // Toast.makeText(getBaseContext(), "Uploaded Successfully", Toast.LENGTH_SHORT).show();
+                        mProgress.dismiss();
                     }
                 });
                 Log.e("uri ", "Successful Upload");
-                //Toast.makeText(getApplicationContext(),"Successful Upload ",Toast.LENGTH_SHORT).show();
             }
         }).addOnFailureListener(new OnFailureListener() {
             @Override
@@ -928,7 +894,6 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             }
         });
     }
-
 
     @Override
     protected void onResume() {
@@ -962,14 +927,14 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         return (file.getAbsolutePath() + "/" + "a" + ".mp3");
     }
 
-
-    public void startRecording(String path){
+    public void startRecording(){
+        Log.e("MediaRecorder", "onStart");
         recorder = new MediaRecorder();
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
         recorder.setOutputFormat(output_formats[currentFormat]);
         recorder.setAudioEncoder(MediaRecorder.AudioEncoder.AMR_NB);
-        recorder.setOutputFile(path);
-
+        recorder.setOutputFile(getFilename());
+        Log.e("recorder", "onStart");
         try {
             recorder.prepare();
             recorder.start();
@@ -979,7 +944,6 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             e.printStackTrace();
         } catch (IOException e) {
             Log.e("IOException : ", e.getMessage());
-
             e.printStackTrace();
         }
     }
@@ -1095,12 +1059,16 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                 startLocationUpdates();
             }
         }
+        IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(networkChangeListener, intentFilter);
+
     }
 
     public void onStop() {
         super.onStop();
         Log.e("onStop : ", "onStop");
         stopLocationUpdate();
+        unregisterReceiver(networkChangeListener);
     }
 
     // create method for location update //
@@ -1125,7 +1093,6 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
             mGoogleApiClient.disconnect();
         }
     }
-
 
     private void requestGps() {
         Log.e("requestGps: ",geoUri);
@@ -1198,10 +1165,10 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
     public void onConnectionFailed(ConnectionResult result) {
     }
 
-
     @Override
     public void onConnectionSuspended(int i) {
-
     }
+
+
 
 }

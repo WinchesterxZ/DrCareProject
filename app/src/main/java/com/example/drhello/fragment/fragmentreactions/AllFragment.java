@@ -73,7 +73,7 @@ public class AllFragment extends Fragment {
         }
         Log.e("userAcc12 :",userAccountArrayListAdapter.size()+"");
 
-        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList,userAccountArrayListAdapter,userAccountme);
+        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList);
         recyclerView.setAdapter(numReactionAdapter);
 
         return view;

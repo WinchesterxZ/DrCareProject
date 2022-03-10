@@ -77,9 +77,6 @@ public class Recycle_Message_Adapter extends RecyclerView.Adapter<RecyclerView.V
         switch (holder.getItemViewType()) {
             case viewholdermeID:
                 ChatViewHolderMe chatViewHolderMe = (ChatViewHolderMe) holder;
-
-
-
                 if (message.getMessage().equals("") && message.getRecord().equals("")) { // image recieve
                     chatViewHolderMe.getTxt_date().setText(splitDateTime(message.getDate())[0]);
                     chatViewHolderMe.getTxt_timestamp().setText(timestamp);

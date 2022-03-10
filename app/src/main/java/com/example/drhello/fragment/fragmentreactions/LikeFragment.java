@@ -73,7 +73,7 @@ public class LikeFragment extends Fragment {
 
             }
         }
-        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList,userAccountArrayListAdapter,userAccountme);
+        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList);
         recyclerView.setAdapter(numReactionAdapter);
         return view;
     }

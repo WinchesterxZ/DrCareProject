@@ -1,6 +1,7 @@
 package com.example.drhello.adapter;
 
 import android.content.Context;
+import android.util.Log;
 import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
@@ -76,22 +77,19 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsV
             if (userAccount1.getMap().containsKey(userAccount.getIdFriend())) {
                 LastChat lastChat = (LastChat) userAccount1.getMap().get(userAccount.getIdFriend());
                 DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss:SS a", Locale.US);
-                /*
-                if (chatModel.getMessage().equals("") && chatModel.getRecord().equals("")) {
+
+                Log.e("lastChat : ",lastChat.getMessage());
+                if (lastChat.getMessage().equals("image Message") ) {
                     holder.last_message.setText(userAccount.getNameSender() + " Sent a Photo ");
-                } else if (chatModel.getMessage().equals("") && chatModel.getImage().equals("")) {
+                } else if (lastChat.getMessage().equals("record Message") ) {
                     holder.last_message.setText(userAccount.getNameSender() + " Sent a Record ");
                 } else {
-                    if(chatModel.getMessage().contains("http")){
+                    if(lastChat.getMessage().contains("http")){
                         holder.last_message.setText(userAccount.getNameSender() + " Sent a Location ");
-
                     }else{
-                        holder.last_message.setText(chatModel.getMessage());
+                        holder.last_message.setText(lastChat.getMessage());
                     }
                 }
-
-*/
-                holder.last_message.setText(lastChat.getMessage());
 
                 try {
                     Date date1 = dateFormat.parse(getDateTime());

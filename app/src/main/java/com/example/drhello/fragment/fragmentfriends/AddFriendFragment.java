@@ -83,32 +83,34 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
             @Override
             public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
                 addPersonModelArrayList.clear();
-                for (DocumentSnapshot document1 : value.getDocuments()) {
-                    userAccountme = document1.toObject(UserAccount.class);
-                    db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                        @Override
-                        public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                            if(task.isSuccessful()){
-                                addPersonModelArrayList.clear();
-                                for (DocumentSnapshot document : task.getResult().getDocuments()) {
-                                    if (document.exists()) {
-                                        UserAccount userAccount = document.toObject(UserAccount.class);
-                                        Log.e("document :" , userAccount.getName()+"");
+                if(mAuth.getCurrentUser() != null){
+                    for (DocumentSnapshot document1 : value.getDocuments()) {
+                        userAccountme = document1.toObject(UserAccount.class);
+                        db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if(task.isSuccessful()){
+                                    addPersonModelArrayList.clear();
+                                    for (DocumentSnapshot document : task.getResult().getDocuments()) {
+                                        if (document.exists()) {
+                                            UserAccount userAccount = document.toObject(UserAccount.class);
+                                            Log.e("document :" , userAccount.getName()+"");
 
-                                        if (!userAccount.getId().equals(mAuth.getCurrentUser().getUid())
-                                                && !userAccountme.getFriendsmap().containsKey(userAccount.getId())
-                                                &&!userAccountme.getRequests().containsKey(userAccount.getId())) {
-                                            addPersonModelArrayList.add(userAccount);
-                                            Log.e("seArrayLi :" , userAccount.getName()+"");
+                                            if (!userAccount.getId().equals(mAuth.getCurrentUser().getUid())
+                                                    && !userAccountme.getFriendsmap().containsKey(userAccount.getId())
+                                                    &&!userAccountme.getRequests().containsKey(userAccount.getId())) {
+                                                addPersonModelArrayList.add(userAccount);
+                                                Log.e("seArrayLi :" , userAccount.getName()+"");
+                                            }
                                         }
                                     }
+                                    addPersonAdapter = new AddPersonAdapter(getActivity(), addPersonModelArrayList, AddFriendFragment.this,userAccountme);
+                                    addPersonAdapter.notifyDataSetChanged();
+                                    rec_view.setAdapter(addPersonAdapter);
                                 }
-                                addPersonAdapter = new AddPersonAdapter(getActivity(), addPersonModelArrayList, AddFriendFragment.this,userAccountme);
-                                addPersonAdapter.notifyDataSetChanged();
-                                rec_view.setAdapter(addPersonAdapter);
                             }
+                        });
                     }
-                });
                 }
             }
         });

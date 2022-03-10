@@ -84,29 +84,32 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
             @Override
             public void onEvent(@Nullable QuerySnapshot value, @Nullable FirebaseFirestoreException error) {
                 userAccountArrayList.clear();
-                for (DocumentSnapshot document1 : value.getDocuments()) {
-                     userAccountme = document1.toObject(UserAccount.class);
-                    db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                        @Override
-                        public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                            if (task.isSuccessful()) {
-                                userAccountArrayList.clear();
-                                for (DocumentSnapshot document : task.getResult().getDocuments()) {
-                                    if (document.exists()) {
-                                        UserAccount userAccount = document.toObject(UserAccount.class);
-                             //           Log.e("document :", userAccount.getName() + "");
+                if (mAuth.getCurrentUser() != null) {
+                    for (DocumentSnapshot document1 : value.getDocuments()) {
+                        userAccountme = document1.toObject(UserAccount.class);
+                        db.collection("users").get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
+                            @Override
+                            public void onComplete(@NonNull Task<QuerySnapshot> task) {
+                                if (task.isSuccessful()) {
+                                    userAccountArrayList.clear();
+                                    for (DocumentSnapshot document : task.getResult().getDocuments()) {
+                                        if (document.exists()) {
+                                            UserAccount userAccount = document.toObject(UserAccount.class);
+                                            //           Log.e("document :", userAccount.getName() + "");
 
-                                        if (userAccountme.getRequests().containsKey(userAccount.getId())) {
-                                            userAccountArrayList.add(userAccount);
-                                            Log.e("seArrayLi :", userAccount.getName() + "");
+                                            if (userAccountme.getRequests().containsKey(userAccount.getId())) {
+                                                userAccountArrayList.add(userAccount);
+                                                Log.e("seArrayLi :", userAccount.getName() + "");
+                                            }
                                         }
                                     }
+                                    requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), userAccountArrayList,
+                                            RequestsFriendFragment.this);
+                                    rec_view.setAdapter(requestsPersonAdapter);
                                 }
-                                requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), userAccountArrayList, RequestsFriendFragment.this);
-                                rec_view.setAdapter(requestsPersonAdapter);
                             }
-                        }
-                    });
+                        });
+                    }
                 }
             }
         });
@@ -221,7 +224,8 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
             public boolean onQueryTextChange(String newText) {
                 if (newText.isEmpty()) {
                     accountsSearch.clear();
-                    requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), accountsSearch, RequestsFriendFragment.this);
+                    requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), accountsSearch,
+                            RequestsFriendFragment.this);
                     rec_view.setAdapter(requestsPersonAdapter);
                     return false;
                 }
@@ -234,7 +238,8 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
                 }
 
                 if (accountsSearch.size() != 0) {
-                    requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), accountsSearch, RequestsFriendFragment.this);
+                    requestsPersonAdapter = new RequestsPersonAdapter(getActivity(), accountsSearch,
+                            RequestsFriendFragment.this);
                     rec_view.setAdapter(requestsPersonAdapter);
                 }
 

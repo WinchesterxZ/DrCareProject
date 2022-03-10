@@ -12,7 +12,6 @@
         android:orientation="horizontal"
         android:layout_alignParentLeft="true"
         android:layout_alignParentTop="true"
-
         >
 
         <RelativeLayout
@@ -28,7 +27,6 @@
             android:padding="@dimen/_2sdp">
 
 
-
                 <de.hdodenhof.circleimageview.CircleImageView
                     android:id="@+id/img_cur_user"
                     android:layout_width="@dimen/_50sdp"
@@ -36,9 +34,6 @@
                     android:src="@drawable/me"
                     app:civ_border_color="@color/appColor"
                     app:civ_border_width="0.6dp"/>
-
-
-
 
             <ImageView
                 android:id="@+id/ic_reaction"
@@ -60,45 +55,6 @@
             android:textColor="@color/appColor"
             android:layout_gravity="center"/>
 
-
-
     </LinearLayout>
-
-
-    <Button
-        android:id="@+id/btn_add"
-        android:layout_width="115dp"
-        android:layout_height="@dimen/_30sdp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:layout_marginTop="@dimen/_21sdp"
-        android:layout_marginRight="@dimen/_8sdp"
-        android:background="@drawable/shape_add_friend"
-        android:drawableLeft="@drawable/ic_add_person"
-        android:paddingLeft="@dimen/_5sdp"
-        android:text="@string/add_friend"
-        android:textAllCaps="false"
-        android:textColor="@color/white"
-        android:textStyle="bold" />
-
-    <Button
-        android:visibility="gone"
-        android:id="@+id/btn_cancel"
-        android:layout_width="115dp"
-        android:layout_height="@dimen/_30sdp"
-        android:layout_alignParentTop="true"
-        android:layout_alignParentRight="true"
-        android:layout_marginTop="@dimen/_21sdp"
-        android:layout_marginRight="@dimen/_8sdp"
-        android:drawableLeft="@drawable/ic_add_disabled"
-        android:paddingLeft="@dimen/_5sdp"
-        android:background="@drawable/shape_add_friend"
-        android:text="@string/cancel"
-        android:textAllCaps="false"
-        android:textColor="@color/white"
-        android:textStyle="bold" />
-
-
-
 
 </RelativeLayout>

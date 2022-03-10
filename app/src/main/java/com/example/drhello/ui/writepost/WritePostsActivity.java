@@ -79,7 +79,6 @@ import java.util.Objects;
 
 public class WritePostsActivity extends AppCompatActivity {
 
-
     private final List<Bitmap> bitmaps=new ArrayList<>();
     private final List<String> uriImage=new ArrayList<>();
     private final List<Uri> uriImage2=new ArrayList<>();

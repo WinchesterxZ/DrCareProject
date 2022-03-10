@@ -1,17 +1,16 @@
-package com.example.drhello.ui.mapping;
+package com.example.drhello.connectionnewtwork;
 
-import android.annotation.SuppressLint;
 import android.content.Context;
 import android.net.ConnectivityManager;
 import android.net.NetworkInfo;
 
 public class CheckNetwork {
     public static final int TYPE_WIFI = 1;
-    public static final int TYPE_MOBILE = 2;
+    public static final int TYPE_MOBILE = 1;
     public static final int TYPE_NOT_CONNECTED = 0;
     public static final int NETWORK_STATUS_NOT_CONNECTED = 0;
     public static final int NETWORK_STATUS_WIFI = 1;
-    public static final int NETWORK_STATUS_MOBILE = 2;
+    public static final int NETWORK_STATUS_MOBILE = 1;
 
     public static int getConnectivityStatus(Context context) {
         ConnectivityManager cm = (ConnectivityManager) context.getSystemService(Context.CONNECTIVITY_SERVICE);

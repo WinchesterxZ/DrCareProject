@@ -11,10 +11,12 @@ import androidx.recyclerview.widget.LinearLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.content.res.TypedArray;
 import android.graphics.Color;
 import android.graphics.drawable.Drawable;
+import android.net.ConnectivityManager;
 import android.os.Build;
 import android.os.Bundle;
 import android.util.Log;
@@ -23,9 +25,9 @@ import android.widget.Toast;
 
 import com.etebarian.meowbottomnavigation.MeowBottomNavigation;
 import com.example.drhello.StateOfUser;
+import com.example.drhello.connectionnewtwork.NetworkChangeListener;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.ui.hardware.HardwareActivity;
-import com.example.drhello.textclean.RequestPermissions;
 import com.example.drhello.model.ChatModel;
 import com.example.drhello.ui.news.MainNewsFragment;
 import com.example.drhello.ui.mapping.MapsActivity;
@@ -88,7 +90,8 @@ public class MainActivity extends AppCompatActivity implements DrawerAdapter.OnI
     private final int PERMISSION_ALL_STORAGE = 1000;
     private  UserAccount userAccount;
 
-    private RequestPermissions requestPermissions;
+    NetworkChangeListener networkChangeListener = new NetworkChangeListener();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -98,8 +101,6 @@ public class MainActivity extends AppCompatActivity implements DrawerAdapter.OnI
         }else{
             getWindow().setStatusBarColor(Color.WHITE);
         }
-        requestPermissions = new RequestPermissions(MainActivity.this,MainActivity.this);
-
 
         //to connect layout with java code
         com.example.drhello.databinding.ActivityMainBinding mainBinding = DataBindingUtil.setContentView(this, R.layout.activity_main);
@@ -335,6 +336,9 @@ public class MainActivity extends AppCompatActivity implements DrawerAdapter.OnI
         if (currentUser == null) {
             signIn();
         }
+
+        IntentFilter intentFilter = new IntentFilter(ConnectivityManager.CONNECTIVITY_ACTION);
+        registerReceiver(networkChangeListener, intentFilter);
     }
 
     private void signIn() {
@@ -364,6 +368,8 @@ public class MainActivity extends AppCompatActivity implements DrawerAdapter.OnI
         super.onResume();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Online");
+        Log.e("onResume:","onResume");
+
     }
 
     @Override
@@ -371,5 +377,12 @@ public class MainActivity extends AppCompatActivity implements DrawerAdapter.OnI
         super.onPause();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Offline");
+    }
+
+
+    @Override
+    protected void onStop() {
+        super.onStop();
+        unregisterReceiver(networkChangeListener);
     }
 }

@@ -23,12 +23,9 @@ import java.util.ArrayList;
 import java.util.Map;
 
 public class WowFragment extends Fragment {
-
     private RecyclerView recyclerView;
-    private Posts posts;
     private FirebaseFirestore db = FirebaseFirestore.getInstance();
     private ArrayList<ReactionModel> reactionModelArrayList = new ArrayList<>();
-    private UserViewModel userViewModel;
     private NumReactionAdapter numReactionAdapter;
     private Map<String, String> map;
     private ArrayList<UserAccount> userAccountArrayList = new ArrayList<>();
@@ -75,7 +72,7 @@ public class WowFragment extends Fragment {
 
             }
         }
-        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList,userAccountArrayListAdapter,userAccountme);
+        numReactionAdapter = new NumReactionAdapter(getActivity(), reactionModelArrayList);
         recyclerView.setAdapter(numReactionAdapter);
         return view;
     }

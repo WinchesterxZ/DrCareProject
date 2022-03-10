@@ -30,17 +30,10 @@ import de.hdodenhof.circleimageview.CircleImageView;
 public class NumReactionAdapter extends RecyclerView.Adapter<NumReactionAdapter.ReactionsViewHolder> {
     Context context;
     ArrayList<ReactionModel> reactionModels = new ArrayList<>();
-    private ArrayList<UserAccount> userAccountArrayList;
-    private UserAccount userAccountme;
 
-    private FirebaseAuth mAuth = FirebaseAuth.getInstance();
-
-    public NumReactionAdapter(Context context, ArrayList<ReactionModel> reactionModels, ArrayList<UserAccount> userAccountArrayList, UserAccount userAccountme) {
+    public NumReactionAdapter(Context context, ArrayList<ReactionModel> reactionModels) {
         this.context = context;
         this.reactionModels = reactionModels;
-        this.userAccountArrayList = userAccountArrayList;
-        this.userAccountme = userAccountme;
-        Log.e("Models : ", userAccountArrayList.size() + "");
     }
 
     @NonNull
@@ -56,20 +49,6 @@ public class NumReactionAdapter extends RecyclerView.Adapter<NumReactionAdapter.
         ReactionModel reactionModel = reactionModels.get(position);
         holder.name_user.setText(reactionModel.getName_user());
         // holder.reaction.setImageResource(reactionModel.getReaction());
-        if (userAccountme.getFriendsmap().containsKey(userAccountArrayList.get(position).getId())) {
-            holder.btn_add.setVisibility(View.GONE);
-            holder.btn_cancel.setVisibility(View.GONE);
-        }else if (userAccountme.getId().equals(userAccountArrayList.get(position).getId())) {
-            holder.btn_add.setVisibility(View.GONE);
-            holder.btn_cancel.setVisibility(View.GONE);
-        } else if (userAccountme.getRequestSsent().containsKey(userAccountArrayList.get(position).getId())) {
-            holder.btn_add.setVisibility(View.GONE);
-            holder.btn_cancel.setVisibility(View.VISIBLE);
-        } else {
-            holder.btn_cancel.setVisibility(View.GONE);
-            holder.btn_add.setVisibility(View.VISIBLE);
-        }
-
 
         try {
             Glide.with(context).load(reactionModel.getImg_user()).placeholder(R.drawable.ic_chat).
@@ -110,90 +89,12 @@ public class NumReactionAdapter extends RecyclerView.Adapter<NumReactionAdapter.
         private CircleImageView img_user;
         private TextView name_user;
         private ImageView reaction;
-        private Button btn_add, btn_cancel;
-        private FirebaseFirestore db = FirebaseFirestore.getInstance();
 
         public ReactionsViewHolder(@NonNull View itemView) {
             super(itemView);
             img_user = itemView.findViewById(R.id.img_cur_user);
             name_user = itemView.findViewById(R.id.txt_name_user);
             reaction = itemView.findViewById(R.id.ic_reaction);
-            btn_add = itemView.findViewById(R.id.btn_add);
-            btn_cancel = itemView.findViewById(R.id.btn_cancel);
-
-            btn_add.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View view) {
-                    //    onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"add");
-
-                    UserAccount friendsAccount = userAccountArrayList.get(getAdapterPosition());
-
-                    Map<String, AddPersonModel> friends = friendsAccount.getRequests();
-                    friends.put(userAccountme.getId(), new AddPersonModel(userAccountme.getName(), userAccountme.getImg_profile(), userAccountme.getId()));
-                    friendsAccount.setRequests(friends);
-
-                    Map<String, AddPersonModel> requestsSent = userAccountme.getRequestSsent();
-                    requestsSent.put(friendsAccount.getId(), new AddPersonModel(friendsAccount.getName(), friendsAccount.getImg_profile(), friendsAccount.getId()));
-                    userAccountme.setRequestSsent(requestsSent);
-
-                    db.collection("users").
-                            document(friendsAccount.getId()).set(friendsAccount).addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-                            ;
-                            Toast.makeText(context, "Requests successful ", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-
-                    db.collection("users").
-                            document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-                            Toast.makeText(context, "successful ", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-
-
-                    btn_cancel.setVisibility(View.VISIBLE);
-                    btn_add.setVisibility(View.GONE);
-                }
-            });
-
-            btn_cancel.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    //  onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"cancel");
-                    UserAccount friendsAccount = userAccountArrayList.get(getAdapterPosition());
-
-                    Map<String, AddPersonModel> requests = friendsAccount.getRequests();
-                    requests.remove(userAccountme.getId());
-
-                    Map<String, AddPersonModel> requestsSent = userAccountme.getRequestSsent();
-                    requestsSent.remove(friendsAccount.getId());
-
-                    friendsAccount.setRequests(requests);
-                    userAccountme.setRequestSsent(requestsSent);
-
-                    db.collection("users").
-                            document(friendsAccount.getId()).set(friendsAccount).addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-                            Log.e("fady: ", "req suc");
-                        }
-                    });
-
-                    db.collection("users").
-                            document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-                        @Override
-                        public void onSuccess(Void unused) {
-//                    Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
-                        }
-                    });
-
-                    btn_add.setVisibility(View.VISIBLE);
-                    btn_cancel.setVisibility(View.GONE);
-                }
-            });
         }
     }
 }

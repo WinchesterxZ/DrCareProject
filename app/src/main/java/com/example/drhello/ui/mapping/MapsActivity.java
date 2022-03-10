@@ -67,6 +67,7 @@ import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.BitmapDescriptorFactory;
 import com.google.android.gms.maps.model.LatLng;
 import com.google.android.gms.maps.model.MapStyleOptions;
+import com.google.android.gms.maps.model.Marker;
 import com.google.android.gms.maps.model.MarkerOptions;
 import com.google.android.gms.maps.model.Polyline;
 import com.google.android.gms.maps.model.PolylineOptions;
@@ -75,6 +76,7 @@ import com.google.android.material.bottomsheet.BottomSheetBehavior;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
 
+import java.text.DecimalFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -137,12 +139,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mapFragment.getMapAsync(this);
         mapView = mapFragment.getView();
 
-    /*
-        int status = CheckNetwork.getConnectivityStatusString(getApplicationContext());
-        if (status == CheckNetwork.NETWORK_STATUS_NOT_CONNECTED) {
-            Log.e("status : ", "check network please!!");
-        }
-*/
+
 
         //to move button of my location
         if (mapView != null && mapView.findViewById(Integer.parseInt("1")) != null) {
@@ -154,7 +151,7 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             // position on right bottom
             layoutParams.addRule(RelativeLayout.ALIGN_PARENT_TOP, 0);
             layoutParams.addRule(RelativeLayout.ALIGN_PARENT_BOTTOM, RelativeLayout.TRUE);
-            layoutParams.setMargins(0, 0, 30, 150);
+            layoutParams.setMargins(0, 0, 30, -50);
         }
 
         checkRunTimePermission();
@@ -306,12 +303,38 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         mMap.setTrafficEnabled(true);
         mMap.setIndoorEnabled(true);
         mMap.setMaxZoomPreference(18.5f);
+        mMap.setPadding(10,10,10,350);
+        mMap.getUiSettings().setZoomControlsEnabled(true);
 
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
                 == PackageManager.PERMISSION_GRANTED) {
             mMap.setMyLocationEnabled(true);
         }
+
+        mMap.setOnMapLongClickListener(new GoogleMap.OnMapLongClickListener() {
+            @Override
+            public void onMapLongClick(LatLng latLng) {
+                //add to mark on location
+                mMap.addMarker(new MarkerOptions().position(latLng));
+                mMap.animateCamera(CameraUpdateFactory.newLatLng(latLng));
+                Log.e("flag LONG CLICK: ", latLng.latitude+"  "+latLng.longitude +"");
+            }
+        });
+
+
+        mMap.setOnMarkerClickListener(new GoogleMap.OnMarkerClickListener() {
+            @Override
+            public boolean onMarkerClick(Marker marker) {
+                if(polyline != null){
+                    polyline.remove();
+                }
+                polyline = mMap.addPolyline(new PolylineOptions().add(marker.getPosition(),
+                        new LatLng(newLat,newLon)).width(5).color(Color.RED));
+
+                return false;
+            }
+        });
     }
 
     private void setMapStyle(String text) {
@@ -431,7 +454,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
         }
     }
-
 
     // create method for location update //
     @SuppressLint("MissingPermission")
@@ -898,7 +920,6 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
             }
             polyline =  mMap.addPolyline(new PolylineOptions().add(new LatLng(newLat, newLon),
                     placeDetailsArrayList.get(pos).getPlace_latLng()).width(5).color(Color.RED));
-
         }
     }
 
@@ -914,12 +935,15 @@ public class MapsActivity extends FragmentActivity implements OnMapReadyCallback
         }
         polyline =  mMap.addPolyline(new PolylineOptions().add(new LatLng(newLat, newLon),
                 placeDetailsArrayList.get(pos).getPlace_latLng()).width(5).color(Color.RED));
+    }
 
-        /*
-        mMap.addCircle(new CircleOptions().center(new LatLng(gpsTracker.latitude,gpsTracker.longitude)).
-                radius(30).fillColor(R.color.teal_20).strokeWidth(R.color.teal_20));
+    public void zoomout(View view) {
+        mMap.animateCamera(CameraUpdateFactory.zoomOut());
+    }
 
-         */
+
+    public void zoomin(View view) {
+        mMap.animateCamera(CameraUpdateFactory.zoomIn());
     }
 
 

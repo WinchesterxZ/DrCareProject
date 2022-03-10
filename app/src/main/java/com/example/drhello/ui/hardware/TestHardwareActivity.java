@@ -28,6 +28,7 @@ import android.view.Window;
 import android.view.WindowManager;
 import android.widget.Toast;
 
+import com.example.drhello.MYService;
 import com.example.drhello.R;
 import com.example.drhello.StateOfUser;
 import com.example.drhello.databinding.ActivityTestHardwareBinding;
@@ -90,9 +91,7 @@ public class TestHardwareActivity extends AppCompatActivity {
             w.setFlags(WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS, WindowManager.LayoutParams.FLAG_LAYOUT_NO_LIMITS);
         }
 
-
         activityTestHardwareBinding= DataBindingUtil.setContentView(TestHardwareActivity.this,R.layout.activity_test_hardware);
-
 
         //////////////////to get location
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M) {
@@ -138,7 +137,8 @@ public class TestHardwareActivity extends AppCompatActivity {
                     startPulse();
                 }
 
-//                new WakefulReceiver().setRepeatAlarm(getApplicationContext(), Calendar.getInstance(), 2,1);
+                startService(new Intent(getApplicationContext(), MYService.class));
+
             }
         });
 
@@ -183,7 +183,6 @@ public class TestHardwareActivity extends AppCompatActivity {
         LocationManager locationManager = (LocationManager) mContext.getSystemService(Context.LOCATION_SERVICE);
         return locationManager.isProviderEnabled(LocationManager.GPS_PROVIDER);
     }
-
 
     public void onRequestPermissionsResult(int requestCode,
                                            @NonNull String[] permissions, @NonNull int[] grantResults) {
@@ -273,7 +272,6 @@ public class TestHardwareActivity extends AppCompatActivity {
         final AlertDialog alert = builder.create();
         alert.show();
     }
-
 
     @Override
     protected void onResume() {

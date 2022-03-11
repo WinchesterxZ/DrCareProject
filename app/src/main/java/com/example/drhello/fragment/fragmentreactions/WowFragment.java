@@ -12,10 +12,8 @@ import android.view.ViewGroup;
 
 import com.example.drhello.R;
 import com.example.drhello.adapter.NumReactionAdapter;
-import com.example.drhello.model.Posts;
 import com.example.drhello.model.ReactionModel;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 

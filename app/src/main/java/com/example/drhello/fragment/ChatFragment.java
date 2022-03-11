@@ -6,8 +6,6 @@ import android.os.Bundle;
 
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.RecyclerView;
 
 import android.util.Log;
@@ -16,15 +14,12 @@ import android.view.View;
 import android.view.ViewGroup;
 
 import com.bumptech.glide.Glide;
-import com.example.drhello.AddPersonActivity;
-import com.example.drhello.LastChat;
+import com.example.drhello.ui.chats.AddPersonActivity;
+import com.example.drhello.model.LastChat;
 import com.example.drhello.firebaseinterface.MyCallBackChats;
 import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
 import com.example.drhello.firebaseinterface.MyCallbackUser;
 import com.example.drhello.model.AddPersonModel;
-import com.example.drhello.model.LastMessages;
-import com.example.drhello.model.Posts;
-import com.example.drhello.textclean.RequestPermissions;
 import com.example.drhello.ui.chats.ChatActivity;
 import com.example.drhello.adapter.FriendsAdapter;
 import com.example.drhello.R;
@@ -33,7 +28,6 @@ import com.example.drhello.adapter.UserStateAdapter;
 import com.example.drhello.model.ChatModel;
 import com.example.drhello.model.UserState;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.material.floatingactionbutton.FloatingActionButton;
 import com.google.firebase.auth.FirebaseAuth;
@@ -42,7 +36,6 @@ import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
-import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
 
 import java.util.ArrayList;
@@ -63,6 +56,7 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
     private FloatingActionButton add_user;
     Map<String, AddPersonModel> mapFriend = new HashMap<>();
     private CircleImageView img_cur_user;
+    private UserAccount userAccount;
     public static ProgressDialog mProgress;
     public ChatFragment() {
     }
@@ -90,13 +84,32 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
                 if(!documentSnapshot.exists()){
                     FirebaseAuth.getInstance().getCurrentUser().delete();
                 }else{
-                    UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
+                    userAccount = documentSnapshot.toObject(UserAccount.class);
+
                     try{
                         Glide.with(getActivity()).load(userAccount.getImg_profile()).placeholder(R.drawable.user).
                                 error(R.drawable.user).into(img_cur_user);
                     }catch (Exception e){
                         img_cur_user.setImageResource(R.drawable.user);
                     }
+
+                    readDataUsersListener(new MyCallBackListenerComments() {
+                        @Override
+                        public void onCallBack(QuerySnapshot value) {
+                            for (DocumentSnapshot document : value.getDocuments()) {
+                                UserAccount friendAccount = document.toObject(UserAccount.class);
+                                Log.e("online:","statues");
+                                if(userAccount.getFriendsmap().containsKey(friendAccount.getId())){
+                                    Log.e("online:","mapFriend");
+                                    UserState userState = new UserState(friendAccount.getImg_profile(),
+                                            friendAccount.getState(),friendAccount.getName());
+                                    userStates.add(userState);
+                                }
+                            }
+                            UserStateAdapter userStateAdapter = new UserStateAdapter(getActivity(), userStates);
+                            recyclerView_state.setAdapter(userStateAdapter);
+                        }
+                    });
                 }
                 mProgress.dismiss();
             }
@@ -132,21 +145,7 @@ public class ChatFragment extends Fragment implements OnFriendsClickListener {
             }
         });
 
-        readDataUsersListener(new MyCallBackListenerComments() {
-            @Override
-            public void onCallBack(QuerySnapshot value) {
-                for (DocumentSnapshot document : value.getDocuments()) {
-                    UserAccount userAccount = document.toObject(UserAccount.class);
-                    if(mapFriend.containsKey(userAccount.getId())){
-                        UserState userState = new UserState(userAccount.getImg_profile(),
-                                userAccount.getState(),userAccount.getName());
-                        userStates.add(userState);
-                    }
-                }
-                UserStateAdapter userStateAdapter = new UserStateAdapter(getActivity(), userStates);
-                recyclerView_state.setAdapter(userStateAdapter);
-            }
-        });
+
 
         add_user.setOnClickListener(new View.OnClickListener() {
             @Override

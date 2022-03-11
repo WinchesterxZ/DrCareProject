@@ -14,7 +14,6 @@ import com.example.drhello.R;
 import com.example.drhello.adapter.NumReactionAdapter;
 import com.example.drhello.model.ReactionModel;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -30,7 +29,7 @@ public class SadFragment extends Fragment {
 
     private FirebaseFirestore db= FirebaseFirestore.getInstance();
     private ArrayList<ReactionModel> reactionModelArrayList = new ArrayList<>() ;
-    private UserViewModel userViewModel;
+
     private NumReactionAdapter numReactionAdapter;
     private ArrayList<UserAccount> userAccountArrayListAdapter= new ArrayList<>();
     private UserAccount userAccountme;

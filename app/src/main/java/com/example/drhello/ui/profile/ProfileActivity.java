@@ -2,36 +2,28 @@ package com.example.drhello.ui.profile;
 
 import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.lifecycle.ViewModelProviders;
 
 import android.annotation.SuppressLint;
 import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
-import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
 import android.widget.ImageView;
 import android.widget.TextView;
 
-import com.bumptech.glide.Glide;
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.ui.main.MainActivity;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 
 public class ProfileActivity extends AppCompatActivity {
     ImageView imageView;
-    UserViewModel userViewModel;
     ImageView image_user;
     TextView user_name, user_location, user_school, user_home, user_email, user_phone;
     ImageView back_profile;
@@ -57,10 +49,12 @@ public class ProfileActivity extends AppCompatActivity {
         user_phone = findViewById(R.id.user_phone);
         user_school = findViewById(R.id.user_school);
         image_user = findViewById(R.id.user_image);
+        /*
         userViewModel = new UserViewModel();
         userViewModel = ViewModelProviders.of(this).get(UserViewModel.class);
 
         // all data of user
+
         userViewModel.getUser(mAuth, db);
         userViewModel.UserMutableLiveData.observe(this, userAccount -> {
 
@@ -74,6 +68,8 @@ public class ProfileActivity extends AppCompatActivity {
                 image_user.setImageResource(R.drawable.ic_chat);
             }
         });
+
+         */
 
 
 

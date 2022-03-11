@@ -7,12 +7,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.drhello.R;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.model.UserAccount;
 
 import java.util.ArrayList;
@@ -85,17 +87,27 @@ public class AddPersonAdapter  extends RecyclerView.Adapter<AddPersonAdapter.Add
             btn_add.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"add");
-                    btn_cancel.setVisibility(View.VISIBLE);
-                    btn_add.setVisibility(View.GONE);
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"add");
+                        btn_cancel.setVisibility(View.VISIBLE);
+                        btn_add.setVisibility(View.GONE);
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
+
                 }
             });
             btn_cancel.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View v) {
-                    onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"cancel");
-                    btn_add.setVisibility(View.VISIBLE);
-                    btn_cancel.setVisibility(View.GONE);
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onClickAddPersonListener.onClick(addPersonAdapterArrayList.get(getAdapterPosition()),"cancel");
+                        btn_add.setVisibility(View.VISIBLE);
+                        btn_cancel.setVisibility(View.GONE);
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
+
                 }
             });
         }

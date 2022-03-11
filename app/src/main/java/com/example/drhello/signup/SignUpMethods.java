@@ -15,7 +15,7 @@ import android.util.Log;
 import android.widget.Toast;
 import androidx.annotation.NonNull;
 
-import com.example.drhello.CompleteInfoActivity;
+import com.example.drhello.ui.login.CompleteInfoActivity;
 import com.example.drhello.R;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.ui.profile.UserInformation;
@@ -24,10 +24,8 @@ import com.example.drhello.ui.login.SignUp;
 import com.example.drhello.ui.login.VerifyActivity;
 import com.example.drhello.ui.main.MainActivity;
 import com.facebook.AccessToken;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnFailureListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.FirebaseException;
 import com.google.firebase.auth.AuthCredential;
 import com.google.firebase.auth.FacebookAuthProvider;
@@ -41,8 +39,6 @@ import com.google.firebase.auth.PhoneAuthOptions;
 import com.google.firebase.auth.PhoneAuthProvider;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
 
 import java.text.DateFormat;

@@ -17,7 +17,7 @@ import android.view.View;
 import android.widget.ImageView;
 import android.widget.Toast;
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.databinding.ActivityEditProfileBinding;
 import com.example.drhello.signup.SignUpMethods;
 import com.google.firebase.auth.FirebaseAuth;

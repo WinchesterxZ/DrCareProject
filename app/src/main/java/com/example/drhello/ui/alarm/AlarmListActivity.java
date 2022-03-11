@@ -28,7 +28,7 @@ import com.bignerdranch.android.multiselector.ModalMultiSelectorCallback;
 import com.bignerdranch.android.multiselector.MultiSelector;
 import com.bignerdranch.android.multiselector.SwappingHolder;
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.database.ReminderDatabase;
 import com.example.drhello.databinding.ActivityAlarmListBinding;
 import com.example.drhello.model.DateTimeSorter;

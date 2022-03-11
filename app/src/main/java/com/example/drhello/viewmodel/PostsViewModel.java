@@ -159,25 +159,5 @@ public class PostsViewModel extends ViewModel {
         });
     }
 
-    public  void getPosts(FirebaseAuth mAuth,FirebaseFirestore db ){
-        Log.e("getPosts ","postsList");
-                db.collection("posts").orderBy("date", Query.Direction.DESCENDING)
-                        .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                    @Override
-                    public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                        if(task.isSuccessful()) {
-                            Log.e("getPosts : " , " getPosts");
-                            for (QueryDocumentSnapshot document : task.getResult()) {
-                                Posts posts = document.toObject(Posts.class);
-                                postsMutableLiveData.setValue(posts);
-                            }
-
-                        }
-                    }
-                });
-    }
-
-
-
 }
 

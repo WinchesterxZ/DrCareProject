@@ -16,6 +16,7 @@ import android.util.Patterns;
 import android.view.View;
 import android.widget.Toast;
 import com.example.drhello.R;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.databinding.ActivitySignUpBinding;
 import com.example.drhello.signup.GMailSender;
 import com.example.drhello.signup.PasswordStrength;
@@ -89,18 +90,29 @@ public class SignUp extends AppCompatActivity implements View.OnClickListener, T
     public void onClick(View view) {
         switch (view.getId()) {
             case R.id.btn_signup:
-                mProgress.setMessage("Signing Up");
-                mProgress.show();
-                createUser();
+                if(CheckNetwork.getConnectivityStatusString(SignUp.this) == 1) {
+                    mProgress.setMessage("Signing Up");
+                    mProgress.show();
+                    createUser();
+                }else{
+                    Toast.makeText(SignUp.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
                 break;
             case R.id.btn_facebook_signup:
-                signUpBinding.btnFacebookSignup.startAnimation();
-                createRequestFaceBook();
-
+                if(CheckNetwork.getConnectivityStatusString(SignUp.this) == 1) {
+                    signUpBinding.btnFacebookSignup.startAnimation();
+                    createRequestFaceBook();
+                }else{
+                    Toast.makeText(SignUp.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
                 break;
             case R.id.btn_google_signup:
-                signUpBinding.btnGoogleSignup.startAnimation();
-                signInWithGoogle();
+                if(CheckNetwork.getConnectivityStatusString(SignUp.this) == 1) {
+                    signUpBinding.btnGoogleSignup.startAnimation();
+                    signInWithGoogle();
+                }else{
+                    Toast.makeText(SignUp.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
                 break;
         }
     }

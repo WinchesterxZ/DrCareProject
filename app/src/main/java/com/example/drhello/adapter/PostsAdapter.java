@@ -9,6 +9,7 @@ import android.view.ViewGroup;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.fragment.app.DialogFragment;
@@ -18,11 +19,13 @@ import androidx.recyclerview.widget.GridLayoutManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.fragment.PostFragment;
 import com.example.drhello.ui.writepost.TimeAgo;
 import com.example.drhello.ui.writepost.FBReactionDialog;
 import com.example.drhello.model.Posts;
 import com.example.drhello.R;
+import com.example.drhello.ui.writepost.WritePostsActivity;
 import com.google.firebase.auth.FirebaseAuth;
 import com.skyhope.showmoretextview.ShowMoreTextView;
 
@@ -277,34 +280,54 @@ public class PostsAdapter extends RecyclerView.Adapter<PostsAdapter.PostsHolder>
             commentnum.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
             txt_comment.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
             img_reaction.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onPostClickListener.onClickNumReaction(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onPostClickListener.onClickNumReaction(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
             numreaction.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onPostClickListener.onClickNumReaction(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onPostClickListener.onClickNumReaction(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
             image_comment.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onPostClickListener.onClickComment(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
@@ -312,7 +335,11 @@ public class PostsAdapter extends RecyclerView.Adapter<PostsAdapter.PostsHolder>
             lay_like.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    getReactionsDialog(posts.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        getReactionsDialog(posts.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 

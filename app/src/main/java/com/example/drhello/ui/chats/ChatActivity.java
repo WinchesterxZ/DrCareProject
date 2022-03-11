@@ -53,8 +53,8 @@ import com.devlomi.record_view.OnBasketAnimationEnd;
 import com.devlomi.record_view.OnRecordClickListener;
 import com.devlomi.record_view.OnRecordListener;
 import com.devlomi.record_view.RecordPermissionHandler;
-import com.example.drhello.LastChat;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.model.LastChat;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.connectionnewtwork.NetworkChangeListener;
 import com.example.drhello.firebaseinterface.MyCallBackChannel;
 import com.example.drhello.firebaseinterface.MyCallBackChats;
@@ -205,7 +205,6 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                     ActivityCompat.requestPermissions(ChatActivity.this, new String[]{Manifest.permission.CAMERA},
                             MY_CAMERA_PERMISSION_CODE);
                 } else {
-
                     Intent cameraIntent = new Intent(android.provider.MediaStore.ACTION_IMAGE_CAPTURE);
                     startActivityForResult(cameraIntent, CAMERA_REQUEST_CODE);
                 }
@@ -215,17 +214,20 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         activityChatBinding.imageviewSend.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View view) {
-                if (!activityChatBinding.editMessage.getText().toString().equals("")) {
-                    ChatModel chatModel = new ChatModel(activityChatBinding.editMessage.getText().toString(),
-                            getDateTime(), mAuth.getCurrentUser().getUid(),
-                            friendAccount.getId(), "", userAccountme.getName(), "");
-                    activityChatBinding.editMessage.setText("");
-                    storeMessageOnFirebase(chatModel);
-                    sendNotification(chatModel.getMessage());
-                } else {
-                    Toast.makeText(ChatActivity.this, "Empty", Toast.LENGTH_SHORT).show();
+                if(CheckNetwork.getConnectivityStatusString(ChatActivity.this) == 1) {
+                    if (!activityChatBinding.editMessage.getText().toString().equals("")) {
+                        ChatModel chatModel = new ChatModel(activityChatBinding.editMessage.getText().toString(),
+                                getDateTime(), mAuth.getCurrentUser().getUid(),
+                                friendAccount.getId(), "", userAccountme.getName(), "");
+                        activityChatBinding.editMessage.setText("");
+                        storeMessageOnFirebase(chatModel);
+                        sendNotification(chatModel.getMessage());
+                    } else {
+                        Toast.makeText(ChatActivity.this, "Empty", Toast.LENGTH_SHORT).show();
+                    }
+                }else{
+                    Toast.makeText(ChatActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
                 }
-
             }
         });
 
@@ -556,7 +558,7 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                                     == PackageManager.PERMISSION_GRANTED) {
                         if (isGPSEnabled(ChatActivity.this)) {
                             geoUri = "http://www.google.com/maps/place/" + Lat + "," + Lon + "";
-                            activityChatBinding.editMessage.setText(geoUri);
+                            activityChatBinding.editMessage.setText(activityChatBinding.editMessage.getText()+" "+geoUri);
                             Log.e("google",geoUri);
                         }else{
                             requestGps();
@@ -834,21 +836,34 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
         if (requestCode == CAMERA_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
             try {
                 Bitmap bitmap = (Bitmap) data.getExtras().get("data");
-                uploadImage(bitmap);
+                if(CheckNetwork.getConnectivityStatusString(ChatActivity.this) == 1) {
+                    uploadImage(bitmap);
+                }else{
+                    Toast.makeText(ChatActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
+
             } catch (Exception e) {
                 Log.e("camera exception: ", e.getMessage());
             }
         } else if (requestCode == Gallary_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
             try {
                 Bitmap bitmap = MediaStore.Images.Media.getBitmap(getBaseContext().getContentResolver(), data.getData());
-                uploadImage(bitmap);
+                if(CheckNetwork.getConnectivityStatusString(ChatActivity.this) == 1) {
+                    uploadImage(bitmap);
+                }else{
+                    Toast.makeText(ChatActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
             } catch (IOException e) {
                 Log.e("gallary exception: ", e.getMessage());
             }
         } else if (requestCode == SONGS_REQUEST_CODE && resultCode == Activity.RESULT_OK && data != null) {
             Uri uri = data.getData();
             Log.e("uri : ", uri + "");
-            uploadAudio(Uri.fromFile(new File(getRealPathFromURI(uri))));
+            if(CheckNetwork.getConnectivityStatusString(ChatActivity.this) == 1) {
+                uploadAudio(Uri.fromFile(new File(getRealPathFromURI(uri))));
+            }else{
+                Toast.makeText(ChatActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+            }
         } else if (resultCode == Activity.RESULT_CANCELED) {
             // Toast.makeText(getBaseContext(), "Canceled", Toast.LENGTH_SHORT).show();
         }
@@ -882,7 +897,11 @@ public class ChatActivity extends AppCompatActivity  implements com.google.andro
                                 userAccountme.getName(), uri.toString());
                         storeMessageOnFirebase(chatModel);
                         sendNotification("Send an Record");
+                        if(recordFile!= null){
+                            recordFile.delete();
+                        }
                         mProgress.dismiss();
+
                     }
                 });
                 Log.e("uri ", "Successful Upload");

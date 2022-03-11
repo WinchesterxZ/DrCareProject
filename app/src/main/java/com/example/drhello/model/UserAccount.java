@@ -1,8 +1,5 @@
 package com.example.drhello.model;
 
-import com.example.drhello.LastChat;
-import com.example.drhello.model.AddPersonModel;
-import com.example.drhello.model.ChatModel;
 import com.example.drhello.ui.profile.UserInformation;
 
 import java.io.Serializable;

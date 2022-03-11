@@ -14,6 +14,8 @@ import android.os.Bundle;
 import android.util.Log;
 import android.view.View;
 import android.widget.Toast;
+
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.databinding.ActivitySignInBinding;
 import com.example.drhello.firebaseinterface.MyCallbackSignIn;
 import com.example.drhello.model.UserAccount;
@@ -97,54 +99,71 @@ public class SignIn extends AppCompatActivity implements View.OnClickListener {
 
         switch (view.getId()) {
             case R.id.btn_signin:
-                String email_phone = Objects.requireNonNull(Objects.requireNonNull(signInBinding.editEmailSignin).getEditText()).getText().toString().trim();
-                String password = Objects.requireNonNull(Objects.requireNonNull(signInBinding.editPassSignin).getEditText()).getText().toString().trim();
-                if (!email_phone.equals("") && !password.equals("")) {
-                    if(email_phone.matches("[0-9]+")){
-                        if(isValidPhoneNumber(email_phone)){
-                            db.collection("users").whereEqualTo("phone",email_phone).
-                                    get().addOnCompleteListener(task -> {
-                                        if (task.isSuccessful()) {
-                                            int count = task.getResult().size();
-                                            if(count == 0){
-                                                Log.e("signin :  ", "This mobile number does not have an account");
-                                                Toast.makeText(SignIn.this, "This mobile number does not have an account, and please enter the correct number!!", Toast.LENGTH_SHORT).show();
-                                            }else{
-                                                for (QueryDocumentSnapshot document : task.getResult()) {
+                if(CheckNetwork.getConnectivityStatusString(SignIn.this) == 1) {
+                    String email_phone = Objects.requireNonNull(Objects.requireNonNull(signInBinding.editEmailSignin).getEditText()).getText().toString().trim();
+                    String password = Objects.requireNonNull(Objects.requireNonNull(signInBinding.editPassSignin).getEditText()).getText().toString().trim();
+                    if (!email_phone.equals("") && !password.equals("")) {
+                        if(email_phone.matches("[0-9]+")){
+                            if(isValidPhoneNumber(email_phone)){
+                                db.collection("users").whereEqualTo("phone",email_phone).
+                                        get().addOnCompleteListener(task -> {
+                                    if (task.isSuccessful()) {
+                                        int count = task.getResult().size();
+                                        if(count == 0){
+                                            Log.e("signin :  ", "This mobile number does not have an account");
+                                            Toast.makeText(SignIn.this, "This mobile number does not have an account, and please enter the correct number!!", Toast.LENGTH_SHORT).show();
+                                        }else{
+                                            for (QueryDocumentSnapshot document : task.getResult()) {
 
-                                                    Log.e("signin :  ", "task.isSuccessful");
-                                                    flag_check_firebase = true;
-                                                    UserAccount userAccount = document.toObject(UserAccount.class);
-                                                    signUpMethods = new SignUpMethods(SignIn.this, 1);
-                                                    signUpMethods.signInEmailAndPass(userAccount.getEmail(), password,userAccount);
-                                                }
+                                                Log.e("signin :  ", "task.isSuccessful");
+                                                flag_check_firebase = true;
+                                                UserAccount userAccount = document.toObject(UserAccount.class);
+                                                signUpMethods = new SignUpMethods(SignIn.this, 1);
+                                                signUpMethods.signInEmailAndPass(userAccount.getEmail(), password,userAccount);
                                             }
                                         }
-                                    });
+                                    }
+                                });
 
 
-                            Log.e("signin :  ", "with phone and pass");
+                                Log.e("signin :  ", "with phone and pass");
+                            }else{
+                                Toast.makeText(SignIn.this, "invalid phone , please try again!!", Toast.LENGTH_SHORT).show();
+                            }
                         }else{
-                            Toast.makeText(SignIn.this, "invalid phone , please try again!!", Toast.LENGTH_SHORT).show();
+                            Log.e("signin :  ", "with email and pass");
+                            signUpMethods = new SignUpMethods(SignIn.this,1);
+                            signUpMethods.signInEmailAndPass(email_phone, password,new UserAccount());
                         }
-                    }else{
-                        Log.e("signin :  ", "with email and pass");
-                        signUpMethods = new SignUpMethods(SignIn.this,1);
-                        signUpMethods.signInEmailAndPass(email_phone, password,new UserAccount());
                     }
+                }else{
+                    Toast.makeText(SignIn.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
                 }
                 break;
             case R.id.txt_forgot:
-                Intent intent = new Intent(SignIn.this, ForgotPassword.class);
-                startActivity(intent);
+                if(CheckNetwork.getConnectivityStatusString(SignIn.this) == 1) {
+                    Intent intent = new Intent(SignIn.this, ForgotPassword.class);
+                    startActivity(intent);
+                }else{
+                    Toast.makeText(SignIn.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
                 break;
             case R.id.btn_facebook_signin:
-                signInBinding.btnFacebookSignin.startAnimation();
-                createRequestFaceBook();
+                if(CheckNetwork.getConnectivityStatusString(SignIn.this) == 1) {
+                    signInBinding.btnFacebookSignin.startAnimation();
+                    createRequestFaceBook();
+                }else{
+                    Toast.makeText(SignIn.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
                 break;
             case R.id.btn_google_signin:
-                signInBinding.btnGoogleSignin.startAnimation();
-                signInWithGoogle();
+                if(CheckNetwork.getConnectivityStatusString(SignIn.this) == 1) {
+                    signInBinding.btnGoogleSignin.startAnimation();
+                    signInWithGoogle();
+                }else{
+                    Toast.makeText(SignIn.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                }
+
                 break;
         }
     }

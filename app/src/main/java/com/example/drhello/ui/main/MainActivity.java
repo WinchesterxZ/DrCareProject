@@ -24,7 +24,7 @@ import android.view.View;
 import android.widget.Toast;
 
 import com.etebarian.meowbottomnavigation.MeowBottomNavigation;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.connectionnewtwork.NetworkChangeListener;
 import com.example.drhello.model.UserAccount;
 import com.example.drhello.ui.hardware.HardwareActivity;

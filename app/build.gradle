@@ -20,6 +20,7 @@ android {
                     pip {
                         install "opencv-python"
                         install "nltk"
+                        install "Pillow"
 
 
                     }

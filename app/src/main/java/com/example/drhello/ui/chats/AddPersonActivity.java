@@ -1,4 +1,4 @@
-package com.example.drhello;
+package com.example.drhello.ui.chats;
 
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.databinding.DataBindingUtil;
@@ -9,6 +9,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.view.View;
 
+import com.example.drhello.R;
 import com.example.drhello.adapter.AddPersonAdapter;
 import com.example.drhello.adapter.TapFriendAdapter;
 import com.example.drhello.databinding.ActivityAddPersonBinding;

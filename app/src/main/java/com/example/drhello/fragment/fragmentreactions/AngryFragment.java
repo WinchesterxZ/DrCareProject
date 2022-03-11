@@ -15,7 +15,6 @@ import com.example.drhello.adapter.NumReactionAdapter;
 import com.example.drhello.model.Posts;
 import com.example.drhello.model.ReactionModel;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.FirebaseFirestore;
 
@@ -29,7 +28,7 @@ public class AngryFragment extends Fragment {
     private Posts posts;
     private FirebaseFirestore db= FirebaseFirestore.getInstance();
     private ArrayList<ReactionModel> reactionModelArrayList = new ArrayList<>() ;
-    private UserViewModel userViewModel;
+
     private NumReactionAdapter numReactionAdapter;
     private Map<String,String> map;
     private ArrayList<UserAccount> userAccountArrayList = new ArrayList<>();

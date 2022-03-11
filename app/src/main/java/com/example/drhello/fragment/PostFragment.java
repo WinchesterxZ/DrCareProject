@@ -14,26 +14,21 @@ import android.view.ViewGroup;
 import android.widget.Button;
 import android.widget.ImageView;
 import android.widget.TextView;
-import android.widget.Toast;
+
 import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.fragment.app.Fragment;
-import androidx.lifecycle.Observer;
-import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.RecyclerView;
+
 import com.bumptech.glide.Glide;
-import com.example.drhello.adapter.WriteCommentAdapter;
 import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
 import com.example.drhello.firebaseinterface.MyCallBackReaction;
 import com.example.drhello.firebaseinterface.MyCallbackUser;
-import com.example.drhello.model.CommentModel;
 import com.example.drhello.ui.writepost.NumReactionActivity;
 import com.example.drhello.model.ReactionType;
 import com.example.drhello.model.Posts;
-import com.example.drhello.viewmodel.PostsViewModel;
 import com.example.drhello.R;
 import com.example.drhello.ui.writepost.ShowImageActivity;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.ui.writecomment.WriteCommentActivity;
 import com.example.drhello.ui.writepost.WritePostsActivity;
 import com.example.drhello.adapter.OnPostClickListener;
@@ -50,18 +45,19 @@ import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QuerySnapshot;
+
 import java.util.ArrayList;
 import java.util.Map;
 import java.util.Objects;
 
-public class PostFragment extends Fragment implements OnPostClickListener{
+public class PostFragment extends Fragment implements OnPostClickListener {
 
     private Button btn_write_post;
-    ArrayList<Posts> postsArrayList=new ArrayList<>();
+    ArrayList<Posts> postsArrayList = new ArrayList<>();
     private TextView textView;
     private RecyclerView recycler_posts;
     private PostsAdapter postsAdapter;
-    private ArrayList<String>strings=new ArrayList<>();
+    private ArrayList<String> strings = new ArrayList<>();
     private FirebaseAuth mAuth;
     private FirebaseFirestore db;
     public static ProgressDialog mProgress;
@@ -81,10 +77,10 @@ public class PostFragment extends Fragment implements OnPostClickListener{
     public View onCreateView(LayoutInflater inflater, ViewGroup container,
                              Bundle savedInstanceState) {
         // Inflate the layout for this fragment
-        View view=inflater.inflate(R.layout.fragment_post, container, false);
-        textView=view.findViewById(R.id.txt_post);
-        btn_write_post=view.findViewById(R.id.btn_write_post);
-        recycler_posts=view.findViewById(R.id.recycle_posts);
+        View view = inflater.inflate(R.layout.fragment_post, container, false);
+        textView = view.findViewById(R.id.txt_post);
+        btn_write_post = view.findViewById(R.id.btn_write_post);
+        recycler_posts = view.findViewById(R.id.recycle_posts);
         image_user = view.findViewById(R.id.user_image);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
@@ -93,21 +89,20 @@ public class PostFragment extends Fragment implements OnPostClickListener{
         readData(new MyCallbackUser() {
             @Override
             public void onCallback(DocumentSnapshot documentSnapshot) {
-                if(!documentSnapshot.exists()){
+                if (!documentSnapshot.exists()) {
                     FirebaseAuth.getInstance().getCurrentUser().delete();
-                }else{
+                } else {
                     UserAccount userAccount = documentSnapshot.toObject(UserAccount.class);
-                    try{
+                    try {
                         Glide.with(getActivity()).load(userAccount.getImg_profile()).placeholder(R.drawable.user).
                                 error(R.drawable.user).into(image_user);
-                    }catch (Exception e){
+                    } catch (Exception e) {
                         image_user.setImageResource(R.drawable.user);
                     }
                 }
                 mProgress.dismiss();
             }
         });
-
 
 
         btn_write_post.setOnClickListener(new View.OnClickListener() {
@@ -117,14 +112,14 @@ public class PostFragment extends Fragment implements OnPostClickListener{
             }
         });
 
-        postsAdapter = new PostsAdapter(getActivity(),postsArrayList ,
-                PostFragment.this,getActivity().getSupportFragmentManager());
+        postsAdapter = new PostsAdapter(getActivity(), postsArrayList,
+                PostFragment.this, getActivity().getSupportFragmentManager());
         recycler_posts.setAdapter(postsAdapter);
 
         readDataPostsListener(new MyCallBackListenerComments() {
             @Override
             public void onCallBack(QuerySnapshot value) {
-                Log.e("lostart2 : ",postsArrayList.size()+"");
+                Log.e("lostart2 : ", postsArrayList.size() + "");
                 for (DocumentSnapshot document : value.getDocuments()) {
                     Posts singele_posts = document.toObject(Posts.class);
                     postsArrayList.add(singele_posts);
@@ -172,44 +167,45 @@ public class PostFragment extends Fragment implements OnPostClickListener{
     public void onClickImage(String uri) {
 
         Intent intent = new Intent(getActivity(), ShowImageActivity.class);
-        intent.putExtra("uri_image",uri);
+        intent.putExtra("uri_image", uri);
         startActivity(intent);
     }
 
     @Override
     public void onClickNumReaction(Posts posts) {
-            Intent intent = new Intent(getActivity(), NumReactionActivity.class);
-            intent.putExtra("post",posts);
-            startActivity(intent);
+        Intent intent = new Intent(getActivity(), NumReactionActivity.class);
+        intent.putExtra("post", posts);
+        startActivity(intent);
     }
 
     @Override
     public void onClickComment(Posts posts) {
         Intent intent = new Intent(getActivity(), WriteCommentActivity.class);
-        intent.putExtra("post",posts);
+        intent.putExtra("post", posts);
         startActivity(intent);
     }
 
 
     @Override
     public void selectedReaction(String reaction, Posts posts) {
-        ReactionType reactionType = new ReactionType(reaction,mAuth.getCurrentUser().getUid());
-        Log.e("reactionType" , reactionType.getReactionType());  // new
-        Map<String,String> arrayList = posts.getReactions();
-        if(reactionType.getReactionType().equals(posts.getReactions().get(mAuth.getCurrentUser().getUid()))){
+
+        ReactionType reactionType = new ReactionType(reaction, mAuth.getCurrentUser().getUid());
+        Log.e("reactionType", reactionType.getReactionType());  // new
+        Map<String, String> arrayList = posts.getReactions();
+        if (reactionType.getReactionType().equals(posts.getReactions().get(mAuth.getCurrentUser().getUid()))) {
             arrayList.remove(mAuth.getCurrentUser().getUid());
-        }else{
-            arrayList.put(mAuth.getCurrentUser().getUid(),reactionType.getReactionType());
+        } else {
+            arrayList.put(mAuth.getCurrentUser().getUid(), reactionType.getReactionType());
         }
         posts.setReactions(arrayList);
 
         readDataReadction(new MyCallBackReaction() {
             @Override
             public void onCallBack(Task<Void> task) {
-                if(task.isSuccessful())
+                if (task.isSuccessful())
                     mProgress.dismiss();
             }
-        },posts);
+        }, posts);
 
     }
 

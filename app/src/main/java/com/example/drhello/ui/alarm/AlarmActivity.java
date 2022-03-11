@@ -10,9 +10,8 @@ import android.os.Bundle;
 import android.view.View;
 
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.databinding.ActivityAlarmBinding;
-import com.google.android.material.floatingactionbutton.FloatingActionButton;
 
 public class AlarmActivity extends AppCompatActivity implements View.OnClickListener {
     private static ActivityAlarmBinding alarmBinding;

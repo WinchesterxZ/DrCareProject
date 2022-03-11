@@ -2,6 +2,7 @@ package com.example.drhello.fragment.fragmentfriends;
 
 import static com.facebook.FacebookSdk.getApplicationContext;
 
+import android.app.ProgressDialog;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -21,7 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
+import com.example.drhello.firebaseinterface.MyCallBackAddFriend;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
 import com.example.drhello.model.AddPersonModel;
 import com.example.drhello.adapter.OnClickAddPersonListener;
@@ -29,7 +31,6 @@ import com.example.drhello.R;
 import com.example.drhello.adapter.AddPersonAdapter;
 import com.example.drhello.model.UserAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -51,6 +52,7 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
     private SwipeRefreshLayout swipeRefreshLayout;
     private UserAccount userAccountme;
     private  androidx.appcompat.widget.SearchView searchView;
+    public static ProgressDialog mProgress;
 
     public AddFriendFragment() {
         // Required empty public constructor
@@ -62,6 +64,7 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
         setHasOptionsMenu(true);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        mProgress = new ProgressDialog(getActivity());
     }
 
     @Override
@@ -118,7 +121,9 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
 
     @Override
     public void onClick(UserAccount friendsAccount,String state) {
-
+        mProgress.setMessage("Uploading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         if (state.equals("add")){
             Map<String, AddPersonModel> friends = friendsAccount.getRequests();
             friends.put(userAccountme.getId(), new AddPersonModel(userAccountme.getName(), userAccountme.getImg_profile(), userAccountme.getId()));
@@ -128,30 +133,31 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
             requestsSent.put(friendsAccount.getId(), new AddPersonModel(friendsAccount.getName(), friendsAccount.getImg_profile(), friendsAccount.getId()));
             userAccountme.setRequestSsent(requestsSent);
 
-            db.collection("users").
-                    document(friendsAccount.getId()).set(friendsAccount).addOnSuccessListener(new OnSuccessListener<Void>() {
+            readDataAddFriendListener(new MyCallBackAddFriend() {
                 @Override
-                public void onSuccess(Void unused) {;
-                    Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+                public void onCallBack(Task<Void> task) {
+                    if(task.isSuccessful()){
+                        readDataAddMeListener(new MyCallBackAddFriend() {
+                            @Override
+                            public void onCallBack(Task<Void> task) {
+                                if(task.isSuccessful()){
+                                    Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+                                    Log.e("getTokenID() : " , friendsAccount.getTokenID());
+                                    FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(friendsAccount.getTokenID(),
+                                            mAuth.getCurrentUser().getUid(),
+                                            "Request",
+                                            userAccountme.getName() + " Sent Friend Request ",
+                                            getApplicationContext(),
+                                            getActivity(),
+                                            userAccountme.getImg_profile());
+                                    fcmNotificationsSender.SendNotifications();
+                                    mProgress.dismiss();
+                                }
+                            }
+                        });
+                    }
                 }
-            });
-
-            db.collection("users").
-                    document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void unused) {
-                    Toast.makeText(getActivity(), "successful ", Toast.LENGTH_SHORT).show();
-                }
-            });
-            Log.e("getTokenID() : " , friendsAccount.getTokenID());
-            FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(friendsAccount.getTokenID(),
-                    mAuth.getCurrentUser().getUid(),
-                    "Request",
-                    userAccountme.getName() + " Sent Friend Request ",
-                    getApplicationContext(),
-                    getActivity(),
-                    userAccountme.getImg_profile());
-            fcmNotificationsSender.SendNotifications();
+            },friendsAccount);
 
         }else{
 
@@ -164,23 +170,24 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
             friendsAccount.setRequests(requests);
             userAccountme.setRequestSsent(requestsSent);
 
-            db.collection("users").
-                    document(friendsAccount.getId()).set(friendsAccount).addOnSuccessListener(new OnSuccessListener<Void>() {
+            readDataCancelFriendListener(new MyCallBackAddFriend() {
                 @Override
-                public void onSuccess(Void unused) {
-                       Log.e("fady: ","req suc");
+                public void onCallBack(Task<Void> task) {
+                    if(task.isSuccessful()){
+                        readDataCancelMeListener(new MyCallBackAddFriend() {
+                            @Override
+                            public void onCallBack(Task<Void> task) {
+                                if(task.isSuccessful()){
+                                    Toast.makeText(getActivity(), "Cancel successful ", Toast.LENGTH_SHORT).show();
+                                    mProgress.dismiss();
+                                }
+                            }
+                        });
+                    }
                 }
-            });
+            },friendsAccount);
 
-            db.collection("users").
-                    document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-                @Override
-                public void onSuccess(Void unused) {
-//                    Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
-                }
-            });
         }
-
     }
 
     @Override
@@ -246,6 +253,48 @@ public class AddFriendFragment extends Fragment  implements OnClickAddPersonList
         super.onPause();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Offline");
+    }
+
+
+    void readDataCancelFriendListener(MyCallBackAddFriend myCallBackAddFriend,UserAccount friendsAccount){
+        db.collection("users").
+                document(friendsAccount.getId())
+                .set(friendsAccount).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                    myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataCancelMeListener(MyCallBackAddFriend myCallBackAddFriend){
+        db.collection("users").
+                document(userAccountme.getId()).set(userAccountme).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataAddFriendListener(MyCallBackAddFriend myCallBackAddFriend,UserAccount friendsAccount){
+        db.collection("users").
+                document(friendsAccount.getId()).set(friendsAccount).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataAddMeListener(MyCallBackAddFriend myCallBackAddFriend){
+        db.collection("users").
+                document(userAccountme.getId()).set(userAccountme).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
     }
 
 }

@@ -3,7 +3,6 @@ package com.example.drhello.ui.writepost;
 import android.Manifest;
 import android.app.ProgressDialog;
 import android.content.ClipData;
-import android.content.Context;
 import android.content.Intent;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
@@ -14,10 +13,8 @@ import android.os.Bundle;
 import android.provider.MediaStore;
 import android.util.Log;
 import android.view.View;
-import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
-import androidx.annotation.NonNull;
 import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.appcompat.widget.Toolbar;
@@ -27,11 +24,10 @@ import androidx.lifecycle.ViewModelProviders;
 import androidx.recyclerview.widget.GridLayoutManager;
 
 import com.bumptech.glide.Glide;
-import com.example.drhello.StateOfUser;
-import com.example.drhello.firebaseinterface.MyCallbackSignIn;
+import com.example.drhello.ui.chats.StateOfUser;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.firebaseinterface.MyCallbackUser;
 import com.example.drhello.model.UserAccount;
-import com.example.drhello.textclean.PreprocessingStrings;
 import com.example.drhello.textclean.RequestPermissions;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
 import com.example.drhello.databinding.ActivityWritePostsBinding;
@@ -39,35 +35,19 @@ import com.example.drhello.model.Posts;
 import com.example.drhello.ui.main.MainActivity;
 import com.example.drhello.viewmodel.PostsViewModel;
 import com.example.drhello.R;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.adapter.ImagePostsAdapter;
-import com.google.android.gms.tasks.OnCompleteListener;
 import com.google.android.gms.tasks.OnSuccessListener;
-import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.QueryDocumentSnapshot;
-import com.google.firebase.firestore.QuerySnapshot;
 import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.ml.modeldownloader.CustomModel;
-import com.google.firebase.ml.modeldownloader.CustomModelDownloadConditions;
-import com.google.firebase.ml.modeldownloader.DownloadType;
-import com.google.firebase.ml.modeldownloader.FirebaseModelDownloader;
 import com.google.firebase.storage.FirebaseStorage;
 import com.google.firebase.storage.StorageReference;
-import com.google.zxing.WriterException;
-
-import org.tensorflow.lite.Interpreter;
 
 import java.io.ByteArrayOutputStream;
-import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.ByteBuffer;
-import java.nio.ByteOrder;
-import java.nio.FloatBuffer;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
@@ -104,6 +84,8 @@ public class WritePostsActivity extends AppCompatActivity {
             getWindow().setStatusBarColor(Color.WHITE);
         }
         requestPermissions = new RequestPermissions(WritePostsActivity.this,WritePostsActivity.this);
+
+
         inti();
 
         activityWritePostsBinding = DataBindingUtil.setContentView(this, R.layout.activity_write_posts);
@@ -148,45 +130,50 @@ public class WritePostsActivity extends AppCompatActivity {
 
     //to upload post
         activityWritePostsBinding.imgPost.setOnClickListener(v -> {
-            mProgress.setMessage("Uploading..");
-            mProgress.show();
-            mProgress.setCancelable(false);
-            String post=activityWritePostsBinding.editPost.getText().toString().trim();
-            Log.e("posts.getnameuser ",posts.getImageUser());
-            posts.setReactions(new HashMap<>());
-            posts.setWritePost(post);
-            posts.setUserId(mAuth.getUid());
-            postsViewModel.uploadImages(db,storageReference,bytes,uriImage,posts);
-            postsViewModel.isfinish.observe(WritePostsActivity.this, integer -> {
-                Log.d(TAG, "Image: " + integer + "  uriImage.size() : "+ bytes.size());
-                if (integer == bytes.size()) {
-                    Log.d(TAG, "uploadImage: " + integer);
-                    Log.e("int image ","fcm");
-                    FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender("/topics/all",
-                            mAuth.getCurrentUser().getUid(),
-                            "Post",
-                            posts.getNameUser() + " Upload a new post ",
-                            getApplicationContext(),
-                            WritePostsActivity.this,
-                            posts.getImageUser());
-                    fcmNotificationsSender.SendNotifications();
-                    mProgress.dismiss();
-                    Intent intent = new Intent(WritePostsActivity.this, MainActivity.class);
-                    intent.putExtra("postsView","postsView");
-                    startActivity(intent);
-                }
-            });
+            if(CheckNetwork.getConnectivityStatusString(WritePostsActivity.this) == 1){
+                mProgress.setMessage("Uploading..");
+                mProgress.show();
+                mProgress.setCancelable(false);
+                String post=activityWritePostsBinding.editPost.getText().toString().trim();
+                Log.e("posts.getnameuser ",posts.getImageUser());
+                posts.setReactions(new HashMap<>());
+                posts.setWritePost(post);
+                posts.setUserId(mAuth.getUid());
+                postsViewModel.uploadImages(db,storageReference,bytes,uriImage,posts);
+                postsViewModel.isfinish.observe(WritePostsActivity.this, integer -> {
+                    Log.d(TAG, "Image: " + integer + "  uriImage.size() : "+ bytes.size());
+                    if (integer == bytes.size()) {
+                        Log.d(TAG, "uploadImage: " + integer);
+                        Log.e("int image ","fcm");
+                        FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender("/topics/all",
+                                mAuth.getCurrentUser().getUid(),
+                                "Post",
+                                posts.getNameUser() + " Upload a new post ",
+                                getApplicationContext(),
+                                WritePostsActivity.this,
+                                posts.getImageUser());
+                        fcmNotificationsSender.SendNotifications();
+                        mProgress.dismiss();
+                        Intent intent = new Intent(WritePostsActivity.this, MainActivity.class);
+                        intent.putExtra("postsView","postsView");
+                        startActivity(intent);
+                    }
+                });
+            }else{
+                Toast.makeText(this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+            }
         });
 
         activityWritePostsBinding.addImage.setOnClickListener(v -> {
             if (requestPermissions.permissionStorageRead()) {
                 ActivityCompat.requestPermissions(WritePostsActivity.this,
                         new String[]{ Manifest.permission.READ_EXTERNAL_STORAGE},100);
+            }else{
+                Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
+                intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
+                intent.setType("image/*");
+                startActivityForResult(intent,1);
             }
-            Intent intent=new Intent(Intent.ACTION_GET_CONTENT);
-            intent.putExtra(Intent.EXTRA_ALLOW_MULTIPLE,true);
-            intent.setType("image/*");
-            startActivityForResult(intent,1);
         });
     }
 

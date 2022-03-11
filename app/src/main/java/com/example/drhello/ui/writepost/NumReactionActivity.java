@@ -12,19 +12,16 @@ import android.util.Log;
 import android.view.View;
 
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.adapter.TabAdapter;
 import com.example.drhello.databinding.ActivityNumReactionBinding;
 import com.example.drhello.firebaseinterface.MyCallbackAllUser;
-import com.example.drhello.firebaseinterface.MyCallbackUser;
+import com.example.drhello.model.CommentModel;
 import com.example.drhello.model.Posts;
 import com.example.drhello.model.UserAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.android.material.tabs.TabLayout;
-import com.google.firebase.auth.FirebaseAuth;
-import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
 import com.google.firebase.firestore.FirebaseFirestore;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -41,7 +38,11 @@ public class NumReactionActivity extends AppCompatActivity {
     private ArrayList<UserAccount> userAccountArrayList = new ArrayList<>();
     private int likeItem=0,loveItem=0,hahaItem=0,sadItem=0,wowItem=0,angryItem=0;
     public static ProgressDialog mProgress;
+    private CommentModel commentModel;
+    private Collection<String> values;
+    private TabAdapter adapter;
     FirebaseFirestore db = FirebaseFirestore.getInstance();
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -58,7 +59,12 @@ public class NumReactionActivity extends AppCompatActivity {
         setSupportActionBar(activityNumReactionBinding.toolbarReaction);
         Objects.requireNonNull(getSupportActionBar()).setTitle("");
 
-        posts = (Posts) getIntent().getSerializableExtra("post");
+        if(getIntent().getSerializableExtra("post") != null){
+            posts = (Posts) getIntent().getSerializableExtra("post");
+        }else{
+            commentModel = (CommentModel) getIntent().getSerializableExtra("commentModel");
+        }
+
 
         activityNumReactionBinding.imgBackReaction.setOnClickListener(new View.OnClickListener() {
             @Override
@@ -69,9 +75,14 @@ public class NumReactionActivity extends AppCompatActivity {
 
 
         if (posts != null) {
-            Collection<String> values = posts.getReactions().values();
-            ArrayList<String> list = new ArrayList(values);
+             values = posts.getReactions().values();
+        }else if(commentModel != null){
+            values = commentModel.getReactions().values();
+        }else{
+            values = new ArrayList<>();
+        }
 
+            ArrayList<String> list = new ArrayList(values);
             for (int i = 0; i < list.size(); i++) {
                 switch (list.get(i)) {
                     case "Like":
@@ -112,10 +123,14 @@ public class NumReactionActivity extends AppCompatActivity {
                         break;
                 }
             }
+
+
+        if(posts != null){
+            activityNumReactionBinding.TabReaction.addTab(activityNumReactionBinding.TabReaction.newTab().setText("All "+posts.getReactions().size()),0);
+        }else{
+            activityNumReactionBinding.TabReaction.addTab(activityNumReactionBinding.TabReaction.newTab().setText("All "+commentModel.getReactions().size()),0);
         }
 
-
-        activityNumReactionBinding.TabReaction.addTab(activityNumReactionBinding.TabReaction.newTab().setText("All "+posts.getReactions().size()),0);
         for (int i=0;i<strings.size();i++){
             switch (strings.get(i)){
                 case "Like":
@@ -152,8 +167,14 @@ public class NumReactionActivity extends AppCompatActivity {
                mProgress.dismiss();
                Log.e("onEvent: ",userAccountArrayList.size()+"");
 
-               TabAdapter adapter = new TabAdapter(NumReactionActivity.this, getSupportFragmentManager(),
-                       activityNumReactionBinding.TabReaction.getTabCount(), posts.getReactions(), userAccountArrayList, strings);
+               if(posts != null){
+                    adapter = new TabAdapter(NumReactionActivity.this, getSupportFragmentManager(),
+                           activityNumReactionBinding.TabReaction.getTabCount(), posts.getReactions(), userAccountArrayList, strings);
+               }else{
+                    adapter = new TabAdapter(NumReactionActivity.this, getSupportFragmentManager(),
+                           activityNumReactionBinding.TabReaction.getTabCount(), commentModel.getReactions(), userAccountArrayList, strings);
+               }
+               
                activityNumReactionBinding.viewPager.setAdapter(adapter);
 
                activityNumReactionBinding.viewPager.addOnPageChangeListener(new TabLayout.TabLayoutOnPageChangeListener(activityNumReactionBinding.TabReaction));

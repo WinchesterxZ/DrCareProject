@@ -23,7 +23,8 @@ import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Toast;
 
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
 import com.example.drhello.firebaseinterface.MyCallBackReaction;
 import com.example.drhello.firebaseinterface.MyCallBackWriteComment;
@@ -35,11 +36,10 @@ import com.example.drhello.model.ReactionType;
 import com.example.drhello.databinding.ActivityWriteCommentBinding;
 import com.example.drhello.model.CommentModel;
 import com.example.drhello.ui.main.MainActivity;
-import com.example.drhello.ui.writepost.WritePostsActivity;
+import com.example.drhello.ui.writepost.NumReactionActivity;
 import com.example.drhello.viewmodel.CommentViewModel;
 import com.example.drhello.model.Posts;
 import com.example.drhello.R;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.adapter.OnCommentClickListener;
 import com.example.drhello.adapter.WriteCommentAdapter;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -255,57 +255,61 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
         });
 
         MainCommentBinding.imageSend.setOnClickListener(view -> {
-            mProgress.setMessage("Uploading..");
-            mProgress.setCancelable(false);
-            mProgress.show();
-            if (bitmap != null) {
-                byte[] bytesOutImg;
-                commentModel.setComment(MainCommentBinding.editMessage.getText().toString());
-                commentModel.setDate(getDateTime());
-                ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytesStream);
-                bytesOutImg = bytesStream.toByteArray();
-                commentViewModel.uploadComment(db, bytesOutImg, posts, commentModel, null);
-                MainCommentBinding.editMessage.setText("");
-                bitmap = null;
-                Log.e("image : ", "EROR");
-            } else {
-                Log.e("bitmap : ", bitmap + "");
-                commentModel.setComment_image(null);
-                commentModel.setComment(MainCommentBinding.editMessage.getText().toString());
-                commentModel.setDate(getDateTime());
-                commentViewModel.uploadComment(db, null, posts, commentModel, null);
-                MainCommentBinding.editMessage.setText("");
-            }
-
-            FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(posts.getTokneId(),
-                    mAuth.getCurrentUser().getUid(),
-                    "Comment",
-                    commentModel.getUser_name() + " commented on your post",
-                    getApplicationContext(),
-                    WriteCommentActivity.this,
-                    commentModel.getUser_image(),
-                    posts.getPostId());
-            fcmNotificationsSender.SendNotifications();
-
-            check_img = false;
-            InputMethodManager imm = (InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(MainCommentBinding.editMessage.getWindowToken(), 0);
-
-            posts.setCommentNum(posts.getCommentNum() + 1);
-
-            db.collection("posts").document(posts.getPostId())
-                    .set(posts).addOnCompleteListener(new OnCompleteListener<Void>() {
-                @Override
-                public void onComplete(@NonNull Task<Void> task) {
-                    if (task.isSuccessful()) {
-                        mProgress.dismiss();
-                        //      Toast.makeText(getApplicationContext(), "ok  set", Toast.LENGTH_SHORT).show();
-                    } else {
-                        //     Toast.makeText(getApplicationContext(), "error  set", Toast.LENGTH_SHORT).show();
-                    }
+            if(CheckNetwork.getConnectivityStatusString(WriteCommentActivity.this) == 1) {
+                mProgress.setMessage("Uploading..");
+                mProgress.setCancelable(false);
+                mProgress.show();
+                if (bitmap != null) {
+                    byte[] bytesOutImg;
+                    commentModel.setComment(MainCommentBinding.editMessage.getText().toString());
+                    commentModel.setDate(getDateTime());
+                    ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytesStream);
+                    bytesOutImg = bytesStream.toByteArray();
+                    commentViewModel.uploadComment(db, bytesOutImg, posts, commentModel, null);
+                    MainCommentBinding.editMessage.setText("");
+                    bitmap = null;
+                    Log.e("image : ", "EROR");
+                } else {
+                    Log.e("bitmap : ", bitmap + "");
+                    commentModel.setComment_image(null);
+                    commentModel.setComment(MainCommentBinding.editMessage.getText().toString());
+                    commentModel.setDate(getDateTime());
+                    commentViewModel.uploadComment(db, null, posts, commentModel, null);
+                    MainCommentBinding.editMessage.setText("");
                 }
-            });
+
+                FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(posts.getTokneId(),
+                        mAuth.getCurrentUser().getUid(),
+                        "Comment",
+                        commentModel.getUser_name() + " commented on your post",
+                        getApplicationContext(),
+                        WriteCommentActivity.this,
+                        commentModel.getUser_image(),
+                        posts.getPostId());
+                fcmNotificationsSender.SendNotifications();
+
+                check_img = false;
+                InputMethodManager imm = (InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(MainCommentBinding.editMessage.getWindowToken(), 0);
+
+                posts.setCommentNum(posts.getCommentNum() + 1);
+
+                db.collection("posts").document(posts.getPostId())
+                        .set(posts).addOnCompleteListener(new OnCompleteListener<Void>() {
+                    @Override
+                    public void onComplete(@NonNull Task<Void> task) {
+                        if (task.isSuccessful()) {
+                            mProgress.dismiss();
+                            //      Toast.makeText(getApplicationContext(), "ok  set", Toast.LENGTH_SHORT).show();
+                        } else {
+                            //     Toast.makeText(getApplicationContext(), "error  set", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+            }else{
+                Toast.makeText(WriteCommentActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+            }
         });
     }
 
@@ -489,6 +493,13 @@ public class WriteCommentActivity extends AppCompatActivity implements OnComment
                     mProgress.dismiss();
             }
         },commentModel);
+    }
+
+    @Override
+    public void onClickReaction(CommentModel commentModel) {
+        Intent intent = new Intent(WriteCommentActivity.this, NumReactionActivity.class);
+        intent.putExtra("commentModel", commentModel);
+        startActivity(intent);
     }
 
     public void readDataReadction(MyCallBackReaction myCallback,CommentModel commentModel) {

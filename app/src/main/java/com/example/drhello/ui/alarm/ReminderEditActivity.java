@@ -19,7 +19,7 @@ import android.widget.Switch;
 import android.widget.TimePicker;
 import android.widget.Toast;
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.database.ReminderDatabase;
 import com.example.drhello.databinding.ActivityReminderEditBinding;
 import com.example.drhello.model.Reminder;

@@ -1,7 +1,6 @@
 package com.example.drhello.ui.writecomment;
 
 import androidx.annotation.NonNull;
-import androidx.annotation.Nullable;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import androidx.databinding.DataBindingUtil;
@@ -21,9 +20,11 @@ import android.util.Log;
 import android.view.View;
 import android.view.ViewTreeObserver;
 import android.view.inputmethod.InputMethodManager;
+import android.widget.Toast;
 
 import com.bumptech.glide.Glide;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.firebaseinterface.MyCallBackListenerComments;
 import com.example.drhello.firebaseinterface.MyCallBackWriteComment;
 import com.example.drhello.firebaseinterface.MyCallbackUser;
@@ -33,7 +34,6 @@ import com.example.drhello.model.CommentModel;
 import com.example.drhello.viewmodel.CommentViewModel;
 import com.example.drhello.model.Posts;
 import com.example.drhello.R;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.example.drhello.adapter.WriteCommentAdapter;
 import com.example.drhello.databinding.ActivityInsideCommentBinding;
 import com.google.android.gms.tasks.OnCompleteListener;
@@ -42,9 +42,7 @@ import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.auth.FirebaseUser;
 import com.google.firebase.firestore.DocumentSnapshot;
-import com.google.firebase.firestore.EventListener;
 import com.google.firebase.firestore.FirebaseFirestore;
-import com.google.firebase.firestore.FirebaseFirestoreException;
 import com.google.firebase.firestore.Query;
 import com.google.firebase.firestore.QueryDocumentSnapshot;
 import com.google.firebase.firestore.QuerySnapshot;
@@ -201,34 +199,38 @@ public class InsideCommentActivity extends AppCompatActivity {
         });
 
         commentBinding.imageSend.setOnClickListener(view -> {
+            if(CheckNetwork.getConnectivityStatusString(InsideCommentActivity.this) == 1) {
+                mProgress.setMessage("Uploading..");
+                mProgress.show();
+                if(bitmap != null){
+                    byte[] bytesOutImg ;
 
-            mProgress.setMessage("Uploading..");
-            mProgress.show();
-            if(bitmap != null){
-                byte[] bytesOutImg ;
+                    commentModel2.setComment(commentBinding.editMessage.getText().toString());
+                    commentModel2.setDate(getDateTime());
+                    ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
+                    bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytesStream);
+                    bytesOutImg = bytesStream.toByteArray();
+                    commentViewModel.uploadCommentInside(db, bytesOutImg, posts,commentModel, commentModel2);
+                    commentBinding.editMessage.setText("");
+                    bitmap = null;
+                    Log.e("image : ","EROR");
+                }else{
+                    Log.e("bitmap : ",bitmap+"");
 
-                commentModel2.setComment(commentBinding.editMessage.getText().toString());
-                commentModel2.setDate(getDateTime());
-                ByteArrayOutputStream bytesStream = new ByteArrayOutputStream();
-                bitmap.compress(Bitmap.CompressFormat.JPEG, 100, bytesStream);
-                bytesOutImg = bytesStream.toByteArray();
-                commentViewModel.uploadCommentInside(db, bytesOutImg, posts,commentModel, commentModel2);
-                commentBinding.editMessage.setText("");
-                bitmap = null;
-                Log.e("image : ","EROR");
+                    commentModel2.setComment_image(null);
+                    commentModel2.setComment(commentBinding.editMessage.getText().toString());
+                    commentModel2.setDate(getDateTime());
+                    commentViewModel.uploadCommentInside(db, null, posts,commentModel, commentModel2);
+                    commentBinding.editMessage.setText("");
+                }
+                check_img=false;
+                InputMethodManager imm = (InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE);
+                imm.hideSoftInputFromWindow(commentBinding.editMessage.getWindowToken(), 0);
+
             }else{
-                Log.e("bitmap : ",bitmap+"");
-
-                commentModel2.setComment_image(null);
-                commentModel2.setComment(commentBinding.editMessage.getText().toString());
-                commentModel2.setDate(getDateTime());
-                commentViewModel.uploadCommentInside(db, null, posts,commentModel, commentModel2);
-                commentBinding.editMessage.setText("");
+                Toast.makeText(InsideCommentActivity.this, "Please, Check Internet", Toast.LENGTH_SHORT).show();
             }
-            check_img=false;
-            InputMethodManager imm = (InputMethodManager) getApplicationContext().getSystemService(Context.INPUT_METHOD_SERVICE);
-            imm.hideSoftInputFromWindow(commentBinding.editMessage.getWindowToken(), 0);
-        });
+            });
 
         readDataComments(new MyCallBackWriteComment() {
             @Override

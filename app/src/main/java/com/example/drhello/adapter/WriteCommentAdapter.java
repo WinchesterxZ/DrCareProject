@@ -7,7 +7,9 @@ import android.view.LayoutInflater;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.cardview.widget.CardView;
@@ -16,6 +18,7 @@ import androidx.fragment.app.FragmentManager;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.ui.writepost.FBReactionDialog;
 import com.example.drhello.model.CommentModel;
 import com.example.drhello.R;
@@ -38,6 +41,7 @@ public class WriteCommentAdapter  extends RecyclerView.Adapter<WriteCommentAdapt
     private OnCommentClickListener onCommentClickListener;
     private String reactionType2 = "0";
     private FragmentManager fragmentManager;
+
 
     public WriteCommentAdapter(Context context, ArrayList<CommentModel> commentModels
     ,OnCommentClickListener onCommentClickListener,FragmentManager fragmentManager) {
@@ -201,6 +205,7 @@ public class WriteCommentAdapter  extends RecyclerView.Adapter<WriteCommentAdapt
         CardView cardView;
         ImageView user_image,image_comment;
         CircleImageView img_reaction;
+        LinearLayout lin_reaction;
 
         public CommentsHolder(@NonNull View itemView) {
             super(itemView);
@@ -215,18 +220,38 @@ public class WriteCommentAdapter  extends RecyclerView.Adapter<WriteCommentAdapt
             img_reaction = itemView.findViewById(R.id.img_reaction);
             numreaction=itemView.findViewById(R.id.numreaction);
             txt_date=itemView.findViewById(R.id.txt_date);
+            lin_reaction=itemView.findViewById(R.id.lin_reaction);
 
             if(onCommentClickListener != null){
                 txt_comment.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        onCommentClickListener.onClickComment(commentModels.get(getAdapterPosition()));
+                        if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                            onCommentClickListener.onClickComment(commentModels.get(getAdapterPosition()));
+                        }else{
+                            Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
                 txt_like.setOnClickListener(new View.OnClickListener() {
                     @Override
                     public void onClick(View view) {
-                        getReactionsDialog(commentModels.get(getAdapterPosition()));
+                        if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                            getReactionsDialog(commentModels.get(getAdapterPosition()));
+                        }else{
+                            Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                        }
+                    }
+                });
+
+                lin_reaction.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View view) {
+                        if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                            onCommentClickListener.onClickReaction(commentModels.get(getAdapterPosition()));
+                        }else{
+                            Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                        }
                     }
                 });
 

@@ -9,7 +9,7 @@ import android.webkit.WebViewClient;
 import androidx.appcompat.app.AppCompatActivity;
 
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 
 public class WebViewActivity extends AppCompatActivity {
     private WebView webView;

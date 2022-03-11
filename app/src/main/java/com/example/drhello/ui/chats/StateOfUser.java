@@ -1,4 +1,4 @@
-package com.example.drhello;
+package com.example.drhello.ui.chats;
 
 import android.util.Log;
 

@@ -7,12 +7,14 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.ImageButton;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
 import com.example.drhello.R;
+import com.example.drhello.connectionnewtwork.CheckNetwork;
 import com.example.drhello.model.UserAccount;
 
 import java.util.ArrayList;
@@ -71,14 +73,22 @@ public class RequestsPersonAdapter  extends RecyclerView.Adapter<RequestsPersonA
             btn_accept.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onClickRequestsPersonListener.onClickAccept(RequestsPersonAdapterArrayList.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onClickRequestsPersonListener.onClickAccept(RequestsPersonAdapterArrayList.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
 
             btn_delete.setOnClickListener(new View.OnClickListener() {
                 @Override
                 public void onClick(View view) {
-                    onClickRequestsPersonListener.onClickDelete(RequestsPersonAdapterArrayList.get(getAdapterPosition()));
+                    if(CheckNetwork.getConnectivityStatusString(context) == 1) {
+                        onClickRequestsPersonListener.onClickDelete(RequestsPersonAdapterArrayList.get(getAdapterPosition()));
+                    }else{
+                        Toast.makeText(context, "Please, Check Internet", Toast.LENGTH_SHORT).show();
+                    }
                 }
             });
         }

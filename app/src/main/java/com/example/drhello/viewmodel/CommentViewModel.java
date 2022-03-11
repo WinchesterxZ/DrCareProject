@@ -241,49 +241,7 @@ public class CommentViewModel extends ViewModel {
             });
         }
     }
-
-    public void getComments(FirebaseFirestore db, Posts posts, CommentModel commentModel) {
-        if(commentModel == null){
-            Log.e("getComments : ", posts.getNameUser());
-            commentList.clear();
-            db.collection("posts").document(posts.getPostId())
-                    .collection("comments").orderBy("date", Query.Direction.DESCENDING)
-                    .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful()) {
-                        Log.e("task : ", " tast");
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            CommentModel commentModel = document.toObject(CommentModel.class);
-                            commentList.add(commentModel);
-                        }
-                        commentsMutableLiveData.setValue(commentList);
-                    }
-                }
-            });
-
-        }else{
-            Log.e("getComments : ", posts.getNameUser());
-            commentList.clear();
-            db.collection("posts").document(posts.getPostId()).
-                    collection("comments").document(commentModel.getComment_id())
-                    .collection("InsideComments").orderBy("date", Query.Direction.DESCENDING)
-                    .get().addOnCompleteListener(new OnCompleteListener<QuerySnapshot>() {
-                @Override
-                public void onComplete(@NonNull Task<QuerySnapshot> task) {
-                    if (task.isSuccessful()) {
-                        Log.e("task : ", " tast");
-                        for (QueryDocumentSnapshot document : task.getResult()) {
-                            CommentModel commentModel = document.toObject(CommentModel.class);
-                            commentList.add(commentModel);
-                        }
-                        commentsMutableLiveData.setValue(commentList);
-                    }
-                }
-            });
-        }
-
-    }
+    
 
 
 }

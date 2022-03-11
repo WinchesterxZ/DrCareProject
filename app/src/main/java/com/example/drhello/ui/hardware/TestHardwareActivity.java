@@ -20,30 +20,24 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
-import android.provider.MediaStore;
 import android.provider.Settings;
 import android.util.Log;
 import android.view.View;
 import android.view.Window;
 import android.view.WindowManager;
-import android.widget.Toast;
 
 import com.example.drhello.MYService;
 import com.example.drhello.R;
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
 import com.example.drhello.databinding.ActivityTestHardwareBinding;
-import com.example.drhello.ui.chats.ChatActivity;
 import com.example.drhello.ui.chats.GPSTracker;
 import com.example.drhello.ui.news.NewsViewModel;
 import com.example.drhello.ui.news.Source;
-import com.example.drhello.ui.writepost.WritePostsActivity;
-import com.example.drhello.viewmodel.UserViewModel;
 import com.google.firebase.database.DataSnapshot;
 import com.google.firebase.database.DatabaseError;
 import com.google.firebase.database.DatabaseReference;
 import com.google.firebase.database.FirebaseDatabase;
 import com.google.firebase.database.ValueEventListener;
-import java.util.Calendar;
 
 public class TestHardwareActivity extends AppCompatActivity {
 

@@ -2,6 +2,7 @@ package com.example.drhello.fragment.fragmentfriends;
 
 import static com.facebook.FacebookSdk.getApplicationContext;
 
+import android.app.ProgressDialog;
 import android.os.Bundle;
 
 import androidx.annotation.NonNull;
@@ -21,7 +22,8 @@ import android.view.View;
 import android.view.ViewGroup;
 import android.widget.Toast;
 
-import com.example.drhello.StateOfUser;
+import com.example.drhello.ui.chats.StateOfUser;
+import com.example.drhello.firebaseinterface.MyCallBackAddFriend;
 import com.example.drhello.firebaseservice.FcmNotificationsSender;
 import com.example.drhello.model.AddPersonModel;
 import com.example.drhello.R;
@@ -29,7 +31,6 @@ import com.example.drhello.adapter.RequestsPersonAdapter;
 import com.example.drhello.adapter.OnClickRequestsPersonListener;
 import com.example.drhello.model.UserAccount;
 import com.google.android.gms.tasks.OnCompleteListener;
-import com.google.android.gms.tasks.OnSuccessListener;
 import com.google.android.gms.tasks.Task;
 import com.google.firebase.auth.FirebaseAuth;
 import com.google.firebase.firestore.DocumentSnapshot;
@@ -53,6 +54,7 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
     private UserAccount userAccount;
     private RecyclerView rec_view;
     private androidx.appcompat.widget.SearchView searchView;
+    public static ProgressDialog mProgress;
 
     public RequestsFriendFragment() {
     }
@@ -63,6 +65,7 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
         setHasOptionsMenu(true);
         mAuth = FirebaseAuth.getInstance();
         db = FirebaseFirestore.getInstance();
+        mProgress = new ProgressDialog(getActivity());
     }
 
     @Override
@@ -118,6 +121,9 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
 
     @Override
     public void onClickAccept(UserAccount friend) {
+        mProgress.setMessage("Uploading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         UserAccount friendsAccountOld = friend;
         Map<String, AddPersonModel> friends = userAccountme.getFriendsmap();
         friends.put(friend.getId(), new AddPersonModel(friend.getName(), friend.getImg_profile(), friend.getId()));
@@ -136,38 +142,37 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
         friend.setFriendsmap(mapFriends);
         friend.setRequestSsent(requestsSent);
 
-
-        db.collection("users").
-                document(friend.getId()).set(friend).addOnSuccessListener(new OnSuccessListener<Void>() {
+        readDataAddFriendListener(new MyCallBackAddFriend() {
             @Override
-            public void onSuccess(Void unused) {
-                userAccountArrayList.remove(friendsAccountOld);
-                requestsPersonAdapter.notifyDataSetChanged();
-                Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+            public void onCallBack(Task<Void> task) {
+                if(task.isSuccessful()){
+                    readDataAddMeListener(new MyCallBackAddFriend() {
+                        @Override
+                        public void onCallBack(Task<Void> task) {
+                            userAccountArrayList.remove(friendsAccountOld);
+                            requestsPersonAdapter.notifyDataSetChanged();
+                            FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(friendsAccountOld.getTokenID(),
+                                    mAuth.getCurrentUser().getUid(),
+                                    "Accept",
+                                    userAccountme.getName() + " Accept Friend Request ",
+                                    getApplicationContext(),
+                                    getActivity(),
+                                    userAccountme.getImg_profile());
+                            fcmNotificationsSender.SendNotifications();
+                            Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+                            mProgress.dismiss();
+                        }
+                    });
+                }
             }
-        });
-
-        db.collection("users").
-                document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void unused) {
-                Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
-            }
-        });
-
-
-        FcmNotificationsSender fcmNotificationsSender = new FcmNotificationsSender(friendsAccountOld.getTokenID(),
-                mAuth.getCurrentUser().getUid(),
-                "Accept",
-                userAccountme.getName() + " Accept Friend Request ",
-                getApplicationContext(),
-                getActivity(),
-                userAccountme.getImg_profile());
-        fcmNotificationsSender.SendNotifications();
+        },friend);
     }
 
     @Override
     public void onClickDelete(UserAccount friend) {
+        mProgress.setMessage("Uploading..");
+        mProgress.setCancelable(false);
+        mProgress.show();
         UserAccount friendsAccountOld = friend;
         Map<String, AddPersonModel> requests = userAccountme.getRequests();
         requests.remove(friend.getId());
@@ -178,23 +183,24 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
         userAccountme.setRequests(requests);
         friend.setRequestSsent(requestsSent);
 
-        db.collection("users").
-                document(friend.getId()).set(friend).addOnSuccessListener(new OnSuccessListener<Void>() {
+        readDataDeleteFriendListener(new MyCallBackAddFriend() {
             @Override
-            public void onSuccess(Void unused) {
-                userAccountArrayList.remove(friendsAccountOld);
-                requestsPersonAdapter.notifyDataSetChanged();
-                Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+            public void onCallBack(Task<Void> task) {
+                if(task.isSuccessful()){
+                    readDataDeleteMeListener(new MyCallBackAddFriend() {
+                        @Override
+                        public void onCallBack(Task<Void> task) {
+                            if(task.isSuccessful()){
+                                userAccountArrayList.remove(friendsAccountOld);
+                                requestsPersonAdapter.notifyDataSetChanged();
+                                Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
+                                mProgress.dismiss();
+                            }
+                        }
+                    });
+                }
             }
-        });
-
-        db.collection("users").
-                document(userAccountme.getId()).set(userAccountme).addOnSuccessListener(new OnSuccessListener<Void>() {
-            @Override
-            public void onSuccess(Void unused) {
-                Toast.makeText(getActivity(), "Requests successful ", Toast.LENGTH_SHORT).show();
-            }
-        });
+        },friend,friendsAccountOld);
     }
 
     public void onCreateOptionsMenu(@NonNull Menu menu, @NonNull MenuInflater inflater) {
@@ -261,5 +267,45 @@ public class RequestsFriendFragment extends Fragment implements OnClickRequestsP
         super.onPause();
         StateOfUser stateOfUser = new StateOfUser();
         stateOfUser.changeState("Offline");
+    }
+
+    void readDataDeleteFriendListener(MyCallBackAddFriend myCallBackAddFriend, UserAccount friend,UserAccount friendsAccountOld){
+        db.collection("users").
+                document(friend.getId()).set(friend).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataDeleteMeListener(MyCallBackAddFriend myCallBackAddFriend){
+        db.collection("users").
+                document(userAccountme.getId()).set(userAccountme).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataAddFriendListener(MyCallBackAddFriend myCallBackAddFriend,UserAccount friend){
+        db.collection("users").
+                document(friend.getId()).set(friend).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
+    }
+
+    void readDataAddMeListener(MyCallBackAddFriend myCallBackAddFriend){
+        db.collection("users").
+                document(userAccountme.getId()).set(userAccountme).addOnCompleteListener(new OnCompleteListener<Void>() {
+            @Override
+            public void onComplete(@NonNull Task<Void> task) {
+                myCallBackAddFriend.onCallBack(task);
+            }
+        });
     }
 }

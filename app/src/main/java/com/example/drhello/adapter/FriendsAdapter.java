@@ -11,10 +11,8 @@ import androidx.annotation.NonNull;
 import androidx.recyclerview.widget.RecyclerView;
 
 import com.bumptech.glide.Glide;
-import com.example.drhello.LastChat;
-import com.example.drhello.model.LastMessages;
+import com.example.drhello.model.LastChat;
 import com.example.drhello.R;
-import com.example.drhello.model.ChatModel;
 import com.example.drhello.model.UserAccount;
 
 import java.text.DateFormat;
@@ -75,19 +73,23 @@ public class FriendsAdapter extends RecyclerView.Adapter<FriendsAdapter.FriendsV
 
         if (userAccount1.getMap() != null) {
             if (userAccount1.getMap().containsKey(userAccount.getIdFriend())) {
-                LastChat lastChat = (LastChat) userAccount1.getMap().get(userAccount.getIdFriend());
+                LastChat lastChat = userAccount1.getMap().get(userAccount.getIdFriend());
                 DateFormat dateFormat = new SimpleDateFormat("dd/MM/yyyy hh:mm:ss:SS a", Locale.US);
 
                 Log.e("lastChat : ",lastChat.getMessage());
                 if (lastChat.getMessage().equals("image Message") ) {
-                    holder.last_message.setText(userAccount.getNameSender() + " Sent a Photo ");
+                    holder.last_message.setText(lastChat.getNameSender() + " Sent a Photo ");
                 } else if (lastChat.getMessage().equals("record Message") ) {
-                    holder.last_message.setText(userAccount.getNameSender() + " Sent a Record ");
+                    holder.last_message.setText(lastChat.getNameSender() + " Sent a Record ");
                 } else {
                     if(lastChat.getMessage().contains("http")){
-                        holder.last_message.setText(userAccount.getNameSender() + " Sent a Location ");
+                        holder.last_message.setText(lastChat.getNameSender() + " Sent a Location ");
                     }else{
-                        holder.last_message.setText(lastChat.getMessage());
+                        if(lastChat.getMessage().length() > 20){
+                            holder.last_message.setText(lastChat.getMessage().substring(0,20)+" ...");
+                        }else{
+                            holder.last_message.setText(lastChat.getMessage());
+                        }
                     }
                 }
 
